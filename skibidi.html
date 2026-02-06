@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Geometry Dash - Polargeist Level</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+  }
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+// Player properties
+const player = {
+  x: 100,
+  y: canvas.height - 150,
+  width: 40,
+  height: 40,
+  dy: 0,
+  gravity: 0.6,
+  jumpStrength: -12,
+  isJumping: false
+};
+
+// Obstacles
+const obstacles = [];
+let obstacleTimer = 0;
+
+// Background elements
+const backgroundStars = [];
+for (let i=0; i<100; i++){
+  backgroundStars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    size: Math.random() * 2,
+    speed: Math.random() * 0.5 + 0.2
+  });
+}
+
+// Game control
+let gameOver = false;
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
+    if (!player.isJumping) {
+      player.dy = player.jumpStrength;
+      player.isJumping = true;
+    }
+  }
+});
+
+function drawBackground() {
+  ctx.fillStyle = '#0f2027';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Draw stars
+  ctx.fillStyle = 'white';
+  backgroundStars.forEach(star => {
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+    star.x -= star.speed;
+    if (star.x < 0) star.x = canvas.width + star.size;
+  });
+}
+
+function drawPlayer() {
+  ctx.fillStyle = '#00ffff';
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+}
+
+function generateObstacles() {
+  obstacleTimer++;
+  if (obstacleTimer > 90) { // every 1.5 sec at 60fps
+    const height = Math.random() * 40 + 20;
+    obstacles.push({
+      x: canvas.width,
+      y: canvas.height - height - 50,
+      width: 20,
+      height: height
+    });
+    obstacleTimer = 0;
+  }
+}
+
+function drawObstacles() {
+  ctx.fillStyle = '#ff0055';
+  obstacles.forEach(obs => {
+    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    obs.x -= 6; // obstacle speed
+  });
+  // Remove off-screen obstacles
+  while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
+    obstacles.shift();
+  }
+}
+
+function checkCollision() {
+  for (let obs of obstacles) {
+    if (
+      player.x < obs.x + obs.width &&
+      player.x + player.width > obs.x &&
+      player.y < obs.y + obs.height &&
+      player.y + player.height > obs.y
+    ) {
+      gameOver = true;
+    }
+  }
+}
+
+function gameLoop() {
+  if (gameOver) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '48px sans-serif';
+    ctx.fillText('Game Over', canvas.width/2 - 120, canvas.height/2);
+    return;
+  }
+  drawBackground();
+
+  // Update player
+  player.dy += player.gravity;
+  player.y += player.dy;
+  if (player.y + player.height >= canvas.height - 50) {
+    player.y = canvas.height - 50 - player.height;
+    player.dy = 0;
+    player.isJumping = false;
+  }
+
+  drawPlayer();
+
+  generateObstacles();
+  drawObstacles();
+  checkCollision();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// Start game
+gameLoop();
+</script>
+</body>
+</html>

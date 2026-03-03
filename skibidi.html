@@ -3,52 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hide & Seek - Stealth Update</title>
+    <title>AI Hide & Seek - The Darkness Update</title>
     <style>
         body {
-            margin: 0; padding: 0; background-color: #0f0f1a; color: white;
+            margin: 0; padding: 0; background-color: #050505; color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex; justify-content: center; align-items: center;
             height: 100vh; overflow: hidden;
         }
         #game-container {
             position: relative; width: 800px; height: 600px;
-            box-shadow: 0 0 30px rgba(0,0,0,1); background-color: #16213e;
-            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,1); background-color: #000;
+            overflow: hidden; border: 2px solid #333;
         }
         canvas { display: block; }
         .menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 15, 30, 0.95); display: flex; flex-direction: column;
+            background: rgba(5, 5, 10, 0.95); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 10;
         }
-        h1 { font-size: 3rem; margin-bottom: 5px; color: #e94560; text-transform: uppercase; }
-        p { font-size: 1.1rem; margin-bottom: 25px; text-align: center; max-width: 600px; line-height: 1.5; }
+        h1 { font-size: 3.5rem; margin-bottom: 5px; color: #e94560; text-transform: uppercase; letter-spacing: 2px;}
+        p { font-size: 1.1rem; margin-bottom: 25px; text-align: center; max-width: 600px; line-height: 1.5; color: #ccc;}
         .controls { display: flex; gap: 15px; margin-bottom: 20px; }
         select, button {
-            padding: 12px 20px; font-size: 1.2rem; border: none; border-radius: 5px; cursor: pointer;
+            padding: 12px 20px; font-size: 1.2rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
         }
         select { background-color: #0f3460; color: white; border: 2px solid #1a1a2e; }
-        button { background-color: #e94560; color: white; font-weight: bold; transition: 0.2s; }
+        button { background-color: #e94560; color: white; transition: 0.2s; }
         button:hover { background-color: #ff5277; transform: scale(1.05); }
         .hidden { display: none !important; }
+        
+        /* UI Styling */
         #ui-layer {
-            position: absolute; top: 15px; left: 20px;
-            font-size: 1.5rem; font-weight: bold; pointer-events: none;
+            position: absolute; top: 15px; left: 20px; right: 20px;
+            font-size: 1.2rem; font-weight: bold; pointer-events: none;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: flex; justify-content: space-between; align-items: flex-start;
         }
+        #stamina-container {
+            width: 200px; height: 20px; background: rgba(0,0,0,0.5); 
+            border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-top: 10px;
+        }
+        #stamina-bar {
+            width: 100%; height: 100%; background: #fbbf24; transition: width 0.1s linear;
+        }
+        .ui-text { display: flex; flex-direction: column; gap: 5px; }
+        .quest-text { color: #4ade80; font-size: 1.4rem; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="ui-layer" class="hidden">Survived: <span id="timer">0.0</span>s</div>
+    
+    <div id="ui-layer" class="hidden">
+        <div class="ui-text">
+            <span>Survived: <span id="timer">0.0</span>s</span>
+            <div id="stamina-container"><div id="stamina-bar"></div></div>
+        </div>
+        <div class="ui-text text-right">
+            <span class="quest-text">Cores Collected: <span id="quest-tracker">0/3</span></span>
+        </div>
+    </div>
 
     <div id="start-menu" class="menu">
-        <h1>Hide & Seek</h1>
-        <p><b>Normal:</b> Break line-of-sight to hide. They roam when they can't see you.<br>
-           <b>Hard:</b> They ALWAYS know exactly where you are.</p>
+        <h1>IN THE DARK</h1>
+        <p>Hold <b>SHIFT</b> to sprint. Collect all <b>3 Green Power Cores</b> to escape.<br>
+           Stay out of sight. If they see you, run.</p>
         
         <div class="controls">
             <select id="map-select">
@@ -58,16 +79,16 @@
                 <option value="3">Map: Open Arena</option>
             </select>
             <select id="diff-select">
-                <option value="normal">Difficulty: Normal (Line of Sight)</option>
-                <option value="hard">Difficulty: Hard (Omniscient)</option>
+                <option value="normal">Difficulty: Stealth (Sight)</option>
+                <option value="hard">Difficulty: Hunted (Omniscient)</option>
             </select>
         </div>
-        <button onclick="startGame()">Start Survival</button>
+        <button onclick="startGame()">Enter the Darkness</button>
     </div>
 
-    <div id="game-over-menu" class="menu hidden">
-        <h1>CAUGHT!</h1>
-        <p>You survived for <span id="final-time"></span> seconds.</p>
+    <div id="game-end-menu" class="menu hidden">
+        <h1 id="end-title">CAUGHT!</h1>
+        <p id="end-desc">You survived for <span id="final-time"></span> seconds.</p>
         <button onclick="showStartMenu()">Main Menu</button>
     </div>
 </div>
@@ -82,155 +103,169 @@
     let animationId;
     let difficulty = 'normal';
     
+    // Mechanics
+    let stamina = 100;
+    let coresCollected = 0;
+    
     // World settings
     const worldWidth = 1600;
     const worldHeight = 1200;
     let camera = { x: 0, y: 0, w: 800, h: 600 };
     
     const keys = {};
-    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; keys[e.key] = true; });
-    window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; keys[e.key] = false; });
+    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+    window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-    const player = { x: 800, y: 600, size: 20, speed: 5, color: '#00d2ff' };
+    const player = { x: 100, y: 100, size: 20, baseSpeed: 4, sprintSpeed: 8, color: '#00d2ff' };
     let seekers = [];
     let walls = [];
+    let cores = [];
 
-    // Maps scaled up for a 1600x1200 world
+    // Map Definitions with Safe Spawns and Quests
     const maps = [
-        [ // Map 0: The Big Cross
-            {x: 700, y: 200, w: 200, h: 800}, {x: 300, y: 500, w: 1000, h: 200}
-        ],
-        [ // Map 1: The Maze
-            {x: 200, y: 200, w: 1200, h: 40}, {x: 200, y: 200, w: 40, h: 600},
-            {x: 500, y: 500, w: 900, h: 40}, {x: 200, y: 960, w: 1200, h: 40},
-            {x: 1360, y: 500, w: 40, h: 500}, {x: 500, y: 700, w: 40, h: 260}
-        ],
-        [ // Map 2: City Blocks (lots of cover)
-            {x: 200, y: 200, w: 200, h: 200}, {x: 600, y: 200, w: 200, h: 200},
-            {x: 1000, y: 200, w: 200, h: 200}, {x: 200, y: 600, w: 200, h: 200},
-            {x: 600, y: 600, w: 400, h: 200}, {x: 1200, y: 600, w: 200, h: 400},
-            {x: 200, y: 1000, w: 800, h: 100}
-        ],
-        [] // Map 3: Open Arena
+        { // Map 0: The Cross
+            spawn: {x: 150, y: 100},
+            walls: [ {x: 700, y: 200, w: 200, h: 800}, {x: 300, y: 500, w: 1000, h: 200} ],
+            cores: [ {x: 1400, y: 100}, {x: 100, y: 1000}, {x: 1400, y: 1000} ]
+        },
+        { // Map 1: The Maze
+            spawn: {x: 100, y: 100},
+            walls: [
+                {x: 200, y: 200, w: 1200, h: 40}, {x: 200, y: 200, w: 40, h: 600},
+                {x: 500, y: 500, w: 900, h: 40}, {x: 200, y: 960, w: 1200, h: 40},
+                {x: 1360, y: 500, w: 40, h: 500}, {x: 500, y: 700, w: 40, h: 260}
+            ],
+            cores: [ {x: 1450, y: 100}, {x: 300, y: 600}, {x: 1200, y: 800} ]
+        },
+        { // Map 2: City Blocks
+            spawn: {x: 100, y: 100},
+            walls: [
+                {x: 200, y: 200, w: 200, h: 200}, {x: 600, y: 200, w: 200, h: 200},
+                {x: 1000, y: 200, w: 200, h: 200}, {x: 200, y: 600, w: 200, h: 200},
+                {x: 600, y: 600, w: 400, h: 200}, {x: 1200, y: 600, w: 200, h: 400},
+                {x: 200, y: 1000, w: 800, h: 100}
+            ],
+            cores: [ {x: 1400, y: 400}, {x: 100, y: 1100}, {x: 1100, y: 900} ]
+        },
+        { // Map 3: Open Arena
+            spawn: {x: 800, y: 600},
+            walls: [],
+            cores: [ {x: 200, y: 200}, {x: 1400, y: 1000}, {x: 1400, y: 200} ]
+        }
     ];
 
     function spawnSeekers() {
         seekers = [
-            { x: 100, y: 100, size: 25, speed: 3.5, color: '#e94560', state: 'roam', vx: 1, vy: 1, lastSeen: null },
-            { x: 1400, y: 1000, size: 25, speed: 3.8, color: '#e94560', state: 'roam', vx: -1, vy: -1, lastSeen: null },
-            { x: 1400, y: 100, size: 25, speed: 3.2, color: '#e94560', state: 'roam', vx: -1, vy: 1, lastSeen: null },
-            { x: 100, y: 1000, size: 25, speed: 3.6, color: '#e94560', state: 'roam', vx: 1, vy: -1, lastSeen: null }
+            { x: 100, y: 800, size: 25, speed: 3.8, color: '#e94560', state: 'roam', vx: 1, vy: 1, lastSeen: null },
+            { x: 1400, y: 1000, size: 25, speed: 4.0, color: '#e94560', state: 'roam', vx: -1, vy: -1, lastSeen: null },
+            { x: 1400, y: 100, size: 25, speed: 3.5, color: '#e94560', state: 'roam', vx: -1, vy: 1, lastSeen: null },
+            { x: 800, y: 1000, size: 25, speed: 3.7, color: '#e94560', state: 'roam', vx: 1, vy: -1, lastSeen: null }
         ];
     }
 
-    // Check if a rectangle hits any wall
     function checkWallCollision(newX, newY, objSize) {
-        if (newX < 0 || newX + objSize > worldWidth || newY < 0 || newY + objSize > worldHeight) return true; // World borders
+        if (newX < 0 || newX + objSize > worldWidth || newY < 0 || newY + objSize > worldHeight) return true;
         for (let w of walls) {
-            if (newX < w.x + w.w && newX + objSize > w.x && newY < w.y + w.h && newY + objSize > w.y) {
-                return true; 
-            }
+            if (newX < w.x + w.w && newX + objSize > w.x && newY < w.y + w.h && newY + objSize > w.y) return true; 
         }
         return false;
     }
 
-    // Line of sight raycasting (checks points along a line between seeker and player)
     function hasLineOfSight(x1, y1, x2, y2) {
-        let steps = 50; 
+        let steps = 40; 
         for (let i = 0; i <= steps; i++) {
-            let t = i / steps;
-            let cx = x1 + (x2 - x1) * t;
-            let cy = y1 + (y2 - y1) * t;
-            
-            // Check against walls
+            let cx = x1 + (x2 - x1) * (i / steps);
+            let cy = y1 + (y2 - y1) * (i / steps);
             for (let w of walls) {
-                if (cx > w.x && cx < w.x + w.w && cy > w.y && cy < w.y + w.h) {
-                    return false; // Vision blocked
-                }
+                if (cx > w.x && cx < w.x + w.w && cy > w.y && cy < w.y + w.h) return false;
             }
         }
-        return true; // Can see player
+        return true; 
     }
 
     function update() {
         if (!gameRunning) return;
 
-        // Player Movement
+        // Player Inputs & Sprinting Logic
         let dx = 0; let dy = 0;
-        if (keys['w'] || keys['arrowup']) dy -= player.speed;
-        if (keys['s'] || keys['arrowdown']) dy += player.speed;
-        if (keys['a'] || keys['arrowleft']) dx -= player.speed;
-        if (keys['d'] || keys['arrowright']) dx += player.speed;
+        let isMoving = false;
 
-        // Player Wall Sliding
-        if (dx !== 0 && !checkWallCollision(player.x + dx, player.y, player.size)) player.x += dx;
-        if (dy !== 0 && !checkWallCollision(player.x, player.y + dy, player.size)) player.y += dy;
+        if (keys['w'] || keys['arrowup']) { dy -= 1; isMoving = true; }
+        if (keys['s'] || keys['arrowdown']) { dy += 1; isMoving = true; }
+        if (keys['a'] || keys['arrowleft']) { dx -= 1; isMoving = true; }
+        if (keys['d'] || keys['arrowright']) { dx += 1; isMoving = true; }
 
-        // Update Camera (Center on player, clamp to world borders)
-        camera.x = player.x - camera.w / 2;
-        camera.y = player.y - camera.h / 2;
-        camera.x = Math.max(0, Math.min(worldWidth - camera.w, camera.x));
-        camera.y = Math.max(0, Math.min(worldHeight - camera.h, camera.y));
+        let currentSpeed = player.baseSpeed;
+        if (keys['shift'] && isMoving && stamina > 0) {
+            currentSpeed = player.sprintSpeed;
+            stamina = Math.max(0, stamina - 1.5); // Drain stamina
+        } else {
+            // Regen stamina: faster if standing still
+            let regenRate = isMoving ? 0.3 : 1.0;
+            stamina = Math.min(100, stamina + regenRate);
+        }
+        document.getElementById('stamina-bar').style.width = stamina + '%';
 
-        // Seeker AI Logic
+        // Apply movement
+        if (dx !== 0 && !checkWallCollision(player.x + dx * currentSpeed, player.y, player.size)) player.x += dx * currentSpeed;
+        if (dy !== 0 && !checkWallCollision(player.x, player.y + dy * currentSpeed, player.size)) player.y += dy * currentSpeed;
+
+        // Camera Logic
+        camera.x = Math.max(0, Math.min(worldWidth - camera.w, player.x - camera.w / 2));
+        camera.y = Math.max(0, Math.min(worldHeight - camera.h, player.y - camera.h / 2));
+
+        // Quest / Core Collection
+        cores.forEach((core, index) => {
+            if (!core.collected) {
+                let dist = Math.hypot((player.x + player.size/2) - (core.x + 10), (player.y + player.size/2) - (core.y + 10));
+                if (dist < 25) {
+                    core.collected = true;
+                    coresCollected++;
+                    document.getElementById('quest-tracker').innerText = coresCollected + '/3';
+                    if (coresCollected >= 3) endGame(true); // Win the game!
+                }
+            }
+        });
+
+        // Seeker Logic
         seekers.forEach(seeker => {
             let targetX, targetY;
-            
             if (difficulty === 'hard') {
-                // HARD MODE: Always knows where you are
-                seeker.state = 'chase';
-                targetX = player.x;
-                targetY = player.y;
+                seeker.state = 'chase'; targetX = player.x; targetY = player.y;
             } else {
-                // NORMAL MODE: Line of Sight and Roaming
                 let canSee = hasLineOfSight(seeker.x + seeker.size/2, seeker.y + seeker.size/2, player.x + player.size/2, player.y + player.size/2);
-                
                 if (canSee) {
-                    seeker.state = 'chase';
-                    seeker.lastSeen = { x: player.x, y: player.y };
+                    seeker.state = 'chase'; seeker.lastSeen = { x: player.x, y: player.y };
                     targetX = player.x; targetY = player.y;
                 } else if (seeker.lastSeen) {
-                    seeker.state = 'investigate';
-                    targetX = seeker.lastSeen.x; targetY = seeker.lastSeen.y;
-                    
-                    // If reached last seen spot, go back to roaming
+                    seeker.state = 'investigate'; targetX = seeker.lastSeen.x; targetY = seeker.lastSeen.y;
                     if (Math.abs(seeker.x - targetX) < 5 && Math.abs(seeker.y - targetY) < 5) {
-                        seeker.lastSeen = null;
-                        seeker.state = 'roam';
+                        seeker.lastSeen = null; seeker.state = 'roam';
                     }
                 } else {
                     seeker.state = 'roam';
                 }
             }
 
-            // Apply Seeker Movement based on state
             let sdx = 0, sdy = 0;
             if (seeker.state === 'roam') {
-                sdx = seeker.vx * (seeker.speed * 0.6); // Roam slower
-                sdy = seeker.vy * (seeker.speed * 0.6);
-                
-                // Change direction if hitting a wall or randomly sometimes
+                sdx = seeker.vx * (seeker.speed * 0.5);
+                sdy = seeker.vy * (seeker.speed * 0.5);
                 if (checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.vx *= -1;
                 if (checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.vy *= -1;
-                if (Math.random() < 0.01) { seeker.vx = Math.random() > 0.5 ? 1 : -1; seeker.vy = Math.random() > 0.5 ? 1 : -1; }
-                
+                if (Math.random() < 0.02) { seeker.vx = Math.random() > 0.5 ? 1 : -1; seeker.vy = Math.random() > 0.5 ? 1 : -1; }
             } else {
-                // Chasing or Investigating
                 let angle = Math.atan2(targetY - seeker.y, targetX - seeker.x);
-                sdx = Math.cos(angle) * seeker.speed;
-                sdy = Math.sin(angle) * seeker.speed;
+                sdx = Math.cos(angle) * seeker.speed; sdy = Math.sin(angle) * seeker.speed;
             }
 
-            // Move Seeker with wall sliding
             if (!checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.x += sdx;
             if (!checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.y += sdy;
 
-            // Check if caught
-            let dist = Math.sqrt(Math.pow(player.x - seeker.x, 2) + Math.pow(player.y - seeker.y, 2));
-            if (dist < (player.size/2 + seeker.size/2)) gameOver();
+            // Caught
+            if (Math.hypot(player.x - seeker.x, player.y - seeker.y) < (player.size/2 + seeker.size/2)) endGame(false);
         });
 
-        // Update Timer
         surviveTime = ((Date.now() - startTime) / 1000).toFixed(1);
         document.getElementById('timer').innerText = surviveTime;
     }
@@ -238,39 +273,65 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw World Background (Grid pattern to show movement)
-        ctx.fillStyle = '#16213e';
+        // Map Detail: Tiled Floor Dots
+        ctx.fillStyle = '#0a0a12';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#1e2c52';
-        ctx.lineWidth = 2;
-        for(let i = 0; i <= worldWidth; i += 100) {
-            ctx.beginPath(); ctx.moveTo(i - camera.x, 0 - camera.y); ctx.lineTo(i - camera.x, worldHeight - camera.y); ctx.stroke();
-        }
-        for(let i = 0; i <= worldHeight; i += 100) {
-            ctx.beginPath(); ctx.moveTo(0 - camera.x, i - camera.y); ctx.lineTo(worldWidth - camera.x, i - camera.y); ctx.stroke();
+        ctx.fillStyle = '#1c1c2e';
+        for(let x = 50 - (camera.x % 50); x < canvas.width; x += 50) {
+            for(let y = 50 - (camera.y % 50); y < canvas.height; y += 50) {
+                ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+            }
         }
 
-        // Draw World Borders
-        ctx.strokeStyle = '#e94560';
-        ctx.lineWidth = 5;
+        // World Borders
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 5;
         ctx.strokeRect(0 - camera.x, 0 - camera.y, worldWidth, worldHeight);
 
-        // Draw Walls relative to camera
-        ctx.fillStyle = '#0f3460';
-        walls.forEach(w => ctx.fillRect(w.x - camera.x, w.y - camera.y, w.w, w.h));
+        // Draw Walls with detail
+        walls.forEach(w => {
+            ctx.fillStyle = '#0f3460';
+            ctx.fillRect(w.x - camera.x, w.y - camera.y, w.w, w.h);
+            ctx.strokeStyle = '#4338ca'; // Neon trim
+            ctx.lineWidth = 2;
+            ctx.strokeRect(w.x - camera.x, w.y - camera.y, w.w, w.h);
+        });
 
-        // Draw Player relative to camera
+        // Draw Cores (Quests)
+        cores.forEach(core => {
+            if (!core.collected) {
+                ctx.shadowBlur = 15; ctx.shadowColor = '#4ade80';
+                ctx.fillStyle = '#4ade80';
+                ctx.fillRect(core.x - camera.x, core.y - camera.y, 20, 20);
+                ctx.shadowBlur = 0; // reset shadow
+            }
+        });
+
+        // Draw Player
+        ctx.shadowBlur = 10; ctx.shadowColor = player.color;
         ctx.fillStyle = player.color;
         ctx.fillRect(player.x - camera.x, player.y - camera.y, player.size, player.size);
+        ctx.shadowBlur = 0;
 
-        // Draw Seekers relative to camera
+        // Draw Seekers
         seekers.forEach(seeker => {
-            // Change color slightly based on state
             ctx.fillStyle = seeker.state === 'chase' ? '#ff1e56' : (seeker.state === 'investigate' ? '#ff9a00' : '#8e3251');
             ctx.fillRect(seeker.x - camera.x, seeker.y - camera.y, seeker.size, seeker.size);
             ctx.fillStyle = 'white';
             ctx.fillRect(seeker.x - camera.x + 5, seeker.y - camera.y + 5, 5, 5);
         });
+
+        // The Darkness (Fog of War Overlay)
+        let cx = player.x - camera.x + player.size / 2;
+        let cy = player.y - camera.y + player.size / 2;
+        
+        // Create a radial gradient from the player outward
+        let gradient = ctx.createRadialGradient(cx, cy, 50, cx, cy, 350);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');     // Clear near player
+        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.6)'); // Dim further away
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.98)');  // Pitch black at edges
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     function loop() {
@@ -284,11 +345,20 @@
         document.getElementById('start-menu').classList.add('hidden');
         document.getElementById('ui-layer').classList.remove('hidden');
         
-        difficulty = document.getElementById('diff-select').value;
-        walls = maps[document.getElementById('map-select').value];
+        let mapData = maps[document.getElementById('map-select').value];
+        walls = mapData.walls;
         
-        // Spawn player in center of world
-        player.x = worldWidth / 2; player.y = worldHeight / 2;
+        // Reset Quests
+        cores = JSON.parse(JSON.stringify(mapData.cores)); // Deep copy to reset states
+        coresCollected = 0;
+        document.getElementById('quest-tracker').innerText = '0/3';
+        
+        difficulty = document.getElementById('diff-select').value;
+        
+        // Safe spawn from map data
+        player.x = mapData.spawn.x; 
+        player.y = mapData.spawn.y;
+        stamina = 100;
         
         spawnSeekers();
         startTime = Date.now();
@@ -296,16 +366,29 @@
         loop();
     }
 
-    function gameOver() {
+    function endGame(isWin) {
         gameRunning = false;
         cancelAnimationFrame(animationId);
         document.getElementById('ui-layer').classList.add('hidden');
-        document.getElementById('game-over-menu').classList.remove('hidden');
-        document.getElementById('final-time').innerText = surviveTime;
+        
+        let endMenu = document.getElementById('game-end-menu');
+        let endTitle = document.getElementById('end-title');
+        let endDesc = document.getElementById('end-desc');
+        
+        endMenu.classList.remove('hidden');
+        if (isWin) {
+            endTitle.innerText = "ESCAPED!";
+            endTitle.style.color = "#4ade80";
+            endDesc.innerText = `You collected all cores in ${surviveTime} seconds!`;
+        } else {
+            endTitle.innerText = "CAUGHT!";
+            endTitle.style.color = "#e94560";
+            endDesc.innerText = `You survived for ${surviveTime} seconds.`;
+        }
     }
 
     function showStartMenu() {
-        document.getElementById('game-over-menu').classList.add('hidden');
+        document.getElementById('game-end-menu').classList.add('hidden');
         document.getElementById('start-menu').classList.remove('hidden');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }

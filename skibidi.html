@@ -1,261 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>2D Hide and Seek with Map</title>
-<style>
-  body {
-    margin: 0;
-    background-color: #222;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-  }
-  #gameCanvas {
-    display: block;
-    background-color: #444;
-    margin: 0 auto;
-    border: 2px solid #fff;
-  }
-  #ui {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #fff;
-    font-family: Arial, sans-serif;
-    z-index: 10;
-    text-align: center;
-  }
-  button {
-    margin: 5px;
-    padding: 10px;
-    font-size: 14px;
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Hide & Seek</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            background-color: #16213e;
+        }
+        canvas {
+            display: block;
+        }
+        .menu {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #e94560;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        select, button {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        select {
+            background-color: #0f3460;
+            color: white;
+        }
+        button {
+            background-color: #e94560;
+            color: white;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        button:hover {
+            background-color: #ff5277;
+            transform: scale(1.05);
+        }
+        .hidden {
+            display: none !important;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
 
-<div id="ui">
-  <button id="easyBtn">Easy</button>
-  <button id="hardBtn">Hard</button>
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div id="ui-layer" class="hidden">
+        Time Survived: <span id="timer">0.0</span>s
+    </div>
+
+    <div id="start-menu" class="menu">
+        <h1>THEY KNOW.</h1>
+        <p>Use W, A, S, D or Arrow Keys to run. Survive as long as you can.</p>
+        <select id="map-select">
+            <option value="0">Map 1: The Cross</option>
+            <option value="1">Map 2: The Maze</option>
+            <option value="2">Map 3: Open Arena</option>
+        </select>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <div id="game-over-menu" class="menu hidden">
+        <h1>CAUGHT!</h1>
+        <p>You survived for <span id="final-time"></span> seconds.</p>
+        <button onclick="showStartMenu()">Main Menu</button>
+    </div>
 </div>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Game state
+    let gameRunning = false;
+    let startTime = 0;
+    let surviveTime = 0;
+    let animationId;
+    
+    // Inputs
+    const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
+    
+    window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+    window.addEventListener('keyup', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
 
-let difficulty = 'easy'; // default
-let gameStarted = false;
+    // Entities
+    const player = { x: 400, y: 300, size: 20, speed: 4, color: '#00d2ff' };
+    let seekers = [];
+    let walls = [];
 
-document.getElementById('easyBtn').onclick = () => { difficulty='easy'; startGame(); };
-document.getElementById('hardBtn').onclick = () => { difficulty='hard'; startGame(); };
+    // Map Definitions
+    const maps = [
+        // Map 0: The Cross
+        [
+            {x: 350, y: 100, w: 100, h: 400},
+            {x: 150, y: 250, w: 500, h: 100}
+        ],
+        // Map 1: The Maze
+        [
+            {x: 100, y: 100, w: 600, h: 20},
+            {x: 100, y: 100, w: 20, h: 300},
+            {x: 250, y: 250, w: 450, h: 20},
+            {x: 100, y: 480, w: 600, h: 20},
+            {x: 680, y: 250, w: 20, h: 250}
+        ],
+        // Map 2: Open Arena
+        []
+    ];
 
-function startGame() {
-  document.getElementById('ui').style.display='none';
-  gameStarted=true;
-  init();
-  requestAnimationFrame(update);
-}
-
-// Player controls
-const keys = {};
-document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
-document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-
-// Define the map layout
-const gameMap = {
-  width: 800,
-  height: 600,
-  platforms: [
-    {x: 100, y: 550, width: 200, height: 20},
-    {x: 500, y: 450, width: 200, height: 20},
-    {x: 300, y: 350, width: 150, height: 20},
-    {x: 50, y: 250, width: 100, height: 20}
-  ],
-  obstacles: [
-    {x: 400, y: 300, width: 50, height: 150},
-    {x: 600, y: 200, width: 50, height: 150}
-  ],
-  hidingSpots: [
-    {x: 150, y: 530, width: 30, height: 20},
-    {x: 550, y: 430, width: 30, height: 20}
-  ]
-};
-
-const player = {
-  x: 50,
-  y: 0,
-  width: 30,
-  height: 50,
-  color: 'blue',
-  speed: 2,
-  sprintMultiplier: 2,
-  jumpStrength: 15,
-  vy: 0,
-  onGround: false
-};
-
-const aiCount = 3;
-let aiPlayers = [];
-
-function init() {
-  // Reset player position
-  player.x = 50;
-  player.y = 0;
-  player.vy = 0;
-  player.onGround = false;
-
-  // Initialize AI opponents at random positions
-  aiPlayers = [];
-  for(let i=0; i<aiCount; i++) {
-    aiPlayers.push({
-      x: Math.random() * (gameMap.width - 50),
-      y: 0,
-      width: 30,
-      height: 50,
-      color: 'red',
-      speed: 1 + Math.random(),
-      targetX: Math.random() * (gameMap.width - 50),
-      alerted: false
-    });
-  }
-}
-
-function update() {
-  // Player movement
-  let moveSpeed = player.speed;
-  if (keys['shift']) moveSpeed *= player.sprintMultiplier;
-  if (keys['a']) { player.x -= moveSpeed; }
-  if (keys['d']) { player.x += moveSpeed; }
-  if (keys['w'] && player.onGround) {
-    player.vy = -player.jumpStrength;
-    player.onGround = false;
-  }
-
-  // Gravity
-  player.vy += 0.5;
-  player.y += player.vy;
-
-  // Collision with platforms and ground
-  checkCollisions(player);
-
-  // Boundaries
-  if (player.x < 0) player.x = 0;
-  if (player.x + player.width > gameMap.width) player.x = gameMap.width - player.width;
-  if (player.y + player.height > gameMap.height) {
-    player.y = gameMap.height - player.height;
-    player.vy = 0;
-    player.onGround = true;
-  }
-
-  // AI behavior
-  aiPlayers.forEach(ai => {
-    if (difficulty==='hard') {
-      ai.targetX = player.x;
-    } else {
-      if (Math.abs(ai.x - ai.targetX) < 5) {
-        ai.targetX = Math.random() * (gameMap.width - ai.width);
-      }
+    function spawnSeekers() {
+        seekers = [
+            { x: 50, y: 50, size: 25, speed: 2.5, color: '#e94560' },
+            { x: 750, y: 550, size: 25, speed: 2.8, color: '#e94560' },
+            { x: 750, y: 50, size: 25, speed: 2.2, color: '#e94560' }
+        ];
     }
-    // Move AI towards target
-    if (ai.x < ai.targetX) ai.x += ai.speed;
-    else if (ai.x > ai.targetX) ai.x -= ai.speed;
 
-    // Keep AI above ground
-    // For simplicity, AI don't jump
-  });
-
-  // Check detection
-  for (let ai of aiPlayers) {
-    if (isColliding(player, ai)) {
-      alert('You have been found! Game Over.');
-      startGame();
-      return;
+    function checkWallCollision(newX, newY) {
+        for (let w of walls) {
+            if (newX < w.x + w.w &&
+                newX + player.size > w.x &&
+                newY < w.y + w.h &&
+                newY + player.size > w.y) {
+                return true; 
+            }
+        }
+        return false;
     }
-  }
 
-  draw();
-  requestAnimationFrame(update);
-}
+    function update() {
+        if (!gameRunning) return;
 
-function checkCollisions(entity) {
-  // Check collision with platforms
-  entity.onGround = false;
-  for (const platform of gameMap.platforms) {
-    if (
-      entity.x < platform.x + platform.width &&
-      entity.x + entity.width > platform.x &&
-      entity.y + entity.height > platform.y &&
-      entity.y + entity.height < platform.y + platform.height
-    ) {
-      // Land on platform
-      entity.y = platform.y - entity.height;
-      entity.vy = 0;
-      entity.onGround = true;
+        // Player Movement Logic
+        let dx = 0; let dy = 0;
+        if (keys.w || keys.ArrowUp) dy -= player.speed;
+        if (keys.s || keys.ArrowDown) dy += player.speed;
+        if (keys.a || keys.ArrowLeft) dx -= player.speed;
+        if (keys.d || keys.ArrowRight) dx += player.speed;
+
+        // Apply movement with wall sliding
+        if (dx !== 0 && !checkWallCollision(player.x + dx, player.y)) {
+            player.x += dx;
+        }
+        if (dy !== 0 && !checkWallCollision(player.x, player.y + dy)) {
+            player.y += dy;
+        }
+
+        // Screen bounds for player
+        player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+        player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+        // AI Seeker Logic (They track directly to player)
+        seekers.forEach(seeker => {
+            let angle = Math.atan2(player.y - seeker.y, player.x - seeker.x);
+            seeker.x += Math.cos(angle) * seeker.speed;
+            seeker.y += Math.sin(angle) * seeker.speed;
+
+            // Collision with player (Game Over)
+            let distX = player.x - seeker.x;
+            let distY = player.y - seeker.y;
+            let distance = Math.sqrt(distX*distX + distY*distY);
+            if (distance < (player.size/2 + seeker.size/2)) {
+                gameOver();
+            }
+        });
+
+        // Timer
+        surviveTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        document.getElementById('timer').innerText = surviveTime;
     }
-  }
-  // Check collision with obstacles (solid walls)
-  for (const obs of gameMap.obstacles) {
-    if (
-      entity.x < obs.x + obs.width &&
-      entity.x + entity.width > obs.x &&
-      entity.y + entity.height > obs.y &&
-      entity.y + entity.height < obs.y + obs.height
-    ) {
-      // Land on obstacle
-      entity.y = obs.y - entity.height;
-      entity.vy = 0;
-      entity.onGround = true;
+
+    function draw() {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Walls
+        ctx.fillStyle = '#0f3460';
+        walls.forEach(w => {
+            ctx.fillRect(w.x, w.y, w.w, w.h);
+        });
+
+        // Draw Player
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+
+        // Draw Seekers
+        seekers.forEach(seeker => {
+            ctx.fillStyle = seeker.color;
+            ctx.fillRect(seeker.x, seeker.y, seeker.size, seeker.size);
+            
+            // Creepy "Eye" indicating they are looking at you
+            ctx.fillStyle = 'white';
+            ctx.fillRect(seeker.x + 5, seeker.y + 5, 5, 5);
+        });
     }
-  }
-}
 
-function isColliding(a, b) {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
-}
+    function loop() {
+        update();
+        draw();
+        if (gameRunning) {
+            animationId = requestAnimationFrame(loop);
+        }
+    }
 
-function draw() {
-  ctx.clearRect(0, 0, 800, 600);
-  // Draw map
-  ctx.fillStyle = '#555';
-  ctx.fillRect(0, 0, gameMap.width, gameMap.height);
-  ctx.fillStyle = '#222';
+    function startGame() {
+        document.getElementById('start-menu').classList.add('hidden');
+        document.getElementById('ui-layer').classList.remove('hidden');
+        
+        let mapIndex = document.getElementById('map-select').value;
+        walls = maps[mapIndex];
 
-  // Draw platforms
-  for (const p of gameMap.platforms) {
-    ctx.fillStyle = '#888';
-    ctx.fillRect(p.x, p.y, p.width, p.height);
-  }
+        // Reset Player
+        player.x = 400; player.y = 300;
+        
+        spawnSeekers();
+        startTime = Date.now();
+        gameRunning = true;
+        loop();
+    }
 
-  // Draw obstacles
-  for (const obs of gameMap.obstacles) {
-    ctx.fillStyle = '#444';
-    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-  }
+    function gameOver() {
+        gameRunning = false;
+        cancelAnimationFrame(animationId);
+        document.getElementById('ui-layer').classList.add('hidden');
+        document.getElementById('game-over-menu').classList.remove('hidden');
+        document.getElementById('final-time').innerText = surviveTime;
+    }
 
-  // Draw hiding spots
-  for (const hs of gameMap.hidingSpots) {
-    ctx.fillStyle = 'yellow';
-    ctx.fillRect(hs.x, hs.y, hs.width, hs.height);
-  }
-
-  // Draw player
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.width, player.height);
-
-  // Draw AI
-  for (const ai of aiPlayers) {
-    ctx.fillStyle = ai.color;
-    ctx.fillRect(ai.x, ai.y, ai.width, ai.height);
-  }
-}
+    function showStartMenu() {
+        document.getElementById('game-over-menu').classList.add('hidden');
+        document.getElementById('start-menu').classList.remove('hidden');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 </script>
+
 </body>
 </html>

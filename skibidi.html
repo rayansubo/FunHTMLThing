@@ -3,37 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hide & Seek - Fixed</title>
+    <title>AI Hide & Seek - Stealth Update</title>
     <style>
         body {
-            margin: 0; padding: 0; background-color: #1a1a2e; color: white;
+            margin: 0; padding: 0; background-color: #0f0f1a; color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex; justify-content: center; align-items: center;
             height: 100vh; overflow: hidden;
         }
         #game-container {
             position: relative; width: 800px; height: 600px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8); background-color: #16213e;
+            box-shadow: 0 0 30px rgba(0,0,0,1); background-color: #16213e;
+            overflow: hidden;
         }
         canvas { display: block; }
         .menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.9); display: flex; flex-direction: column;
+            background: rgba(10, 15, 30, 0.95); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 10;
         }
-        h1 { font-size: 3rem; margin-bottom: 10px; color: #e94560; }
-        p { font-size: 1.2rem; margin-bottom: 30px; }
+        h1 { font-size: 3rem; margin-bottom: 5px; color: #e94560; text-transform: uppercase; }
+        p { font-size: 1.1rem; margin-bottom: 25px; text-align: center; max-width: 600px; line-height: 1.5; }
+        .controls { display: flex; gap: 15px; margin-bottom: 20px; }
         select, button {
-            padding: 10px 20px; font-size: 1.2rem; margin: 10px;
-            border: none; border-radius: 5px; cursor: pointer;
+            padding: 12px 20px; font-size: 1.2rem; border: none; border-radius: 5px; cursor: pointer;
         }
-        select { background-color: #0f3460; color: white; }
+        select { background-color: #0f3460; color: white; border: 2px solid #1a1a2e; }
         button { background-color: #e94560; color: white; font-weight: bold; transition: 0.2s; }
         button:hover { background-color: #ff5277; transform: scale(1.05); }
         .hidden { display: none !important; }
         #ui-layer {
-            position: absolute; top: 10px; left: 20px;
+            position: absolute; top: 15px; left: 20px;
             font-size: 1.5rem; font-weight: bold; pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
     </style>
 </head>
@@ -41,17 +43,26 @@
 
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="ui-layer" class="hidden">Time Survived: <span id="timer">0.0</span>s</div>
+    <div id="ui-layer" class="hidden">Survived: <span id="timer">0.0</span>s</div>
 
     <div id="start-menu" class="menu">
-        <h1>THEY KNOW.</h1>
-        <p>Use W, A, S, D or Arrows. Use walls to trap the seekers!</p>
-        <select id="map-select">
-            <option value="0">Map 1: The Cross</option>
-            <option value="1">Map 2: The Maze</option>
-            <option value="2">Map 3: Open Arena</option>
-        </select>
-        <button onclick="startGame()">Start Game</button>
+        <h1>Hide & Seek</h1>
+        <p><b>Normal:</b> Break line-of-sight to hide. They roam when they can't see you.<br>
+           <b>Hard:</b> They ALWAYS know exactly where you are.</p>
+        
+        <div class="controls">
+            <select id="map-select">
+                <option value="0">Map: The Cross</option>
+                <option value="1">Map: The Maze</option>
+                <option value="2">Map: City Blocks</option>
+                <option value="3">Map: Open Arena</option>
+            </select>
+            <select id="diff-select">
+                <option value="normal">Difficulty: Normal (Line of Sight)</option>
+                <option value="hard">Difficulty: Hard (Omniscient)</option>
+            </select>
+        </div>
+        <button onclick="startGame()">Start Survival</button>
     </div>
 
     <div id="game-over-menu" class="menu hidden">
@@ -69,45 +80,76 @@
     let startTime = 0;
     let surviveTime = 0;
     let animationId;
+    let difficulty = 'normal';
     
-    // Better input handling (ignores caps lock)
+    // World settings
+    const worldWidth = 1600;
+    const worldHeight = 1200;
+    let camera = { x: 0, y: 0, w: 800, h: 600 };
+    
     const keys = {};
     window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; keys[e.key] = true; });
     window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; keys[e.key] = false; });
 
-    const player = { x: 400, y: 300, size: 20, speed: 5, color: '#00d2ff' };
+    const player = { x: 800, y: 600, size: 20, speed: 5, color: '#00d2ff' };
     let seekers = [];
     let walls = [];
 
+    // Maps scaled up for a 1600x1200 world
     const maps = [
-        [ // Map 0: The Cross
-            {x: 350, y: 100, w: 100, h: 400}, {x: 150, y: 250, w: 500, h: 100}
+        [ // Map 0: The Big Cross
+            {x: 700, y: 200, w: 200, h: 800}, {x: 300, y: 500, w: 1000, h: 200}
         ],
         [ // Map 1: The Maze
-            {x: 100, y: 100, w: 600, h: 20}, {x: 100, y: 100, w: 20, h: 300},
-            {x: 250, y: 250, w: 450, h: 20}, {x: 100, y: 480, w: 600, h: 20},
-            {x: 680, y: 250, w: 20, h: 250}
+            {x: 200, y: 200, w: 1200, h: 40}, {x: 200, y: 200, w: 40, h: 600},
+            {x: 500, y: 500, w: 900, h: 40}, {x: 200, y: 960, w: 1200, h: 40},
+            {x: 1360, y: 500, w: 40, h: 500}, {x: 500, y: 700, w: 40, h: 260}
         ],
-        [] // Map 2: Open Arena
+        [ // Map 2: City Blocks (lots of cover)
+            {x: 200, y: 200, w: 200, h: 200}, {x: 600, y: 200, w: 200, h: 200},
+            {x: 1000, y: 200, w: 200, h: 200}, {x: 200, y: 600, w: 200, h: 200},
+            {x: 600, y: 600, w: 400, h: 200}, {x: 1200, y: 600, w: 200, h: 400},
+            {x: 200, y: 1000, w: 800, h: 100}
+        ],
+        [] // Map 3: Open Arena
     ];
 
     function spawnSeekers() {
         seekers = [
-            { x: 50, y: 50, size: 25, speed: 2.5, color: '#e94560' },
-            { x: 700, y: 500, size: 25, speed: 2.8, color: '#e94560' },
-            { x: 700, y: 50, size: 25, speed: 2.2, color: '#e94560' }
+            { x: 100, y: 100, size: 25, speed: 3.5, color: '#e94560', state: 'roam', vx: 1, vy: 1, lastSeen: null },
+            { x: 1400, y: 1000, size: 25, speed: 3.8, color: '#e94560', state: 'roam', vx: -1, vy: -1, lastSeen: null },
+            { x: 1400, y: 100, size: 25, speed: 3.2, color: '#e94560', state: 'roam', vx: -1, vy: 1, lastSeen: null },
+            { x: 100, y: 1000, size: 25, speed: 3.6, color: '#e94560', state: 'roam', vx: 1, vy: -1, lastSeen: null }
         ];
     }
 
-    // Dynamic collision checker for both player and seekers
+    // Check if a rectangle hits any wall
     function checkWallCollision(newX, newY, objSize) {
+        if (newX < 0 || newX + objSize > worldWidth || newY < 0 || newY + objSize > worldHeight) return true; // World borders
         for (let w of walls) {
-            if (newX < w.x + w.w && newX + objSize > w.x &&
-                newY < w.y + w.h && newY + objSize > w.y) {
+            if (newX < w.x + w.w && newX + objSize > w.x && newY < w.y + w.h && newY + objSize > w.y) {
                 return true; 
             }
         }
         return false;
+    }
+
+    // Line of sight raycasting (checks points along a line between seeker and player)
+    function hasLineOfSight(x1, y1, x2, y2) {
+        let steps = 50; 
+        for (let i = 0; i <= steps; i++) {
+            let t = i / steps;
+            let cx = x1 + (x2 - x1) * t;
+            let cy = y1 + (y2 - y1) * t;
+            
+            // Check against walls
+            for (let w of walls) {
+                if (cx > w.x && cx < w.x + w.w && cy > w.y && cy < w.y + w.h) {
+                    return false; // Vision blocked
+                }
+            }
+        }
+        return true; // Can see player
     }
 
     function update() {
@@ -124,26 +166,68 @@
         if (dx !== 0 && !checkWallCollision(player.x + dx, player.y, player.size)) player.x += dx;
         if (dy !== 0 && !checkWallCollision(player.x, player.y + dy, player.size)) player.y += dy;
 
-        // Keep player in bounds
-        player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-        player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+        // Update Camera (Center on player, clamp to world borders)
+        camera.x = player.x - camera.w / 2;
+        camera.y = player.y - camera.h / 2;
+        camera.x = Math.max(0, Math.min(worldWidth - camera.w, camera.x));
+        camera.y = Math.max(0, Math.min(worldHeight - camera.h, camera.y));
 
-        // Seeker AI with wall collision
+        // Seeker AI Logic
         seekers.forEach(seeker => {
-            let angle = Math.atan2(player.y - seeker.y, player.x - seeker.x);
-            let sdx = Math.cos(angle) * seeker.speed;
-            let sdy = Math.sin(angle) * seeker.speed;
+            let targetX, targetY;
+            
+            if (difficulty === 'hard') {
+                // HARD MODE: Always knows where you are
+                seeker.state = 'chase';
+                targetX = player.x;
+                targetY = player.y;
+            } else {
+                // NORMAL MODE: Line of Sight and Roaming
+                let canSee = hasLineOfSight(seeker.x + seeker.size/2, seeker.y + seeker.size/2, player.x + player.size/2, player.y + player.size/2);
+                
+                if (canSee) {
+                    seeker.state = 'chase';
+                    seeker.lastSeen = { x: player.x, y: player.y };
+                    targetX = player.x; targetY = player.y;
+                } else if (seeker.lastSeen) {
+                    seeker.state = 'investigate';
+                    targetX = seeker.lastSeen.x; targetY = seeker.lastSeen.y;
+                    
+                    // If reached last seen spot, go back to roaming
+                    if (Math.abs(seeker.x - targetX) < 5 && Math.abs(seeker.y - targetY) < 5) {
+                        seeker.lastSeen = null;
+                        seeker.state = 'roam';
+                    }
+                } else {
+                    seeker.state = 'roam';
+                }
+            }
 
-            // Seekers now slide against walls too!
+            // Apply Seeker Movement based on state
+            let sdx = 0, sdy = 0;
+            if (seeker.state === 'roam') {
+                sdx = seeker.vx * (seeker.speed * 0.6); // Roam slower
+                sdy = seeker.vy * (seeker.speed * 0.6);
+                
+                // Change direction if hitting a wall or randomly sometimes
+                if (checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.vx *= -1;
+                if (checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.vy *= -1;
+                if (Math.random() < 0.01) { seeker.vx = Math.random() > 0.5 ? 1 : -1; seeker.vy = Math.random() > 0.5 ? 1 : -1; }
+                
+            } else {
+                // Chasing or Investigating
+                let angle = Math.atan2(targetY - seeker.y, targetX - seeker.x);
+                sdx = Math.cos(angle) * seeker.speed;
+                sdy = Math.sin(angle) * seeker.speed;
+            }
+
+            // Move Seeker with wall sliding
             if (!checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.x += sdx;
             if (!checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.y += sdy;
 
             // Check if caught
-            let distX = player.x - seeker.x;
-            let distY = player.y - seeker.y;
-            if (Math.sqrt(distX*distX + distY*distY) < (player.size/2 + seeker.size/2)) {
-                gameOver();
-            }
+            let dist = Math.sqrt(Math.pow(player.x - seeker.x, 2) + Math.pow(player.y - seeker.y, 2));
+            if (dist < (player.size/2 + seeker.size/2)) gameOver();
         });
 
         // Update Timer
@@ -154,17 +238,38 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Draw World Background (Grid pattern to show movement)
+        ctx.fillStyle = '#16213e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#1e2c52';
+        ctx.lineWidth = 2;
+        for(let i = 0; i <= worldWidth; i += 100) {
+            ctx.beginPath(); ctx.moveTo(i - camera.x, 0 - camera.y); ctx.lineTo(i - camera.x, worldHeight - camera.y); ctx.stroke();
+        }
+        for(let i = 0; i <= worldHeight; i += 100) {
+            ctx.beginPath(); ctx.moveTo(0 - camera.x, i - camera.y); ctx.lineTo(worldWidth - camera.x, i - camera.y); ctx.stroke();
+        }
+
+        // Draw World Borders
+        ctx.strokeStyle = '#e94560';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(0 - camera.x, 0 - camera.y, worldWidth, worldHeight);
+
+        // Draw Walls relative to camera
         ctx.fillStyle = '#0f3460';
-        walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
+        walls.forEach(w => ctx.fillRect(w.x - camera.x, w.y - camera.y, w.w, w.h));
 
+        // Draw Player relative to camera
         ctx.fillStyle = player.color;
-        ctx.fillRect(player.x, player.y, player.size, player.size);
+        ctx.fillRect(player.x - camera.x, player.y - camera.y, player.size, player.size);
 
+        // Draw Seekers relative to camera
         seekers.forEach(seeker => {
-            ctx.fillStyle = seeker.color;
-            ctx.fillRect(seeker.x, seeker.y, seeker.size, seeker.size);
+            // Change color slightly based on state
+            ctx.fillStyle = seeker.state === 'chase' ? '#ff1e56' : (seeker.state === 'investigate' ? '#ff9a00' : '#8e3251');
+            ctx.fillRect(seeker.x - camera.x, seeker.y - camera.y, seeker.size, seeker.size);
             ctx.fillStyle = 'white';
-            ctx.fillRect(seeker.x + 5, seeker.y + 5, 5, 5);
+            ctx.fillRect(seeker.x - camera.x + 5, seeker.y - camera.y + 5, 5, 5);
         });
     }
 
@@ -175,14 +280,15 @@
     }
 
     function startGame() {
-        // Ensure the window has focus so keys work immediately
         window.focus(); 
-        
         document.getElementById('start-menu').classList.add('hidden');
         document.getElementById('ui-layer').classList.remove('hidden');
         
+        difficulty = document.getElementById('diff-select').value;
         walls = maps[document.getElementById('map-select').value];
-        player.x = 400; player.y = 300;
+        
+        // Spawn player in center of world
+        player.x = worldWidth / 2; player.y = worldHeight / 2;
         
         spawnSeekers();
         startTime = Date.now();

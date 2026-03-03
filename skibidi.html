@@ -3,82 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hide & Seek</title>
+    <title>AI Hide & Seek - Fixed</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #1a1a2e;
-            color: white;
+            margin: 0; padding: 0; background-color: #1a1a2e; color: white;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; overflow: hidden;
         }
         #game-container {
-            position: relative;
-            width: 800px;
-            height: 600px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            background-color: #16213e;
+            position: relative; width: 800px; height: 600px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8); background-color: #16213e;
         }
-        canvas {
-            display: block;
-        }
+        canvas { display: block; }
         .menu {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 10;
         }
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            color: #e94560;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-        }
+        h1 { font-size: 3rem; margin-bottom: 10px; color: #e94560; }
+        p { font-size: 1.2rem; margin-bottom: 30px; }
         select, button {
-            padding: 10px 20px;
-            font-size: 1.2rem;
-            margin: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+            padding: 10px 20px; font-size: 1.2rem; margin: 10px;
+            border: none; border-radius: 5px; cursor: pointer;
         }
-        select {
-            background-color: #0f3460;
-            color: white;
-        }
-        button {
-            background-color: #e94560;
-            color: white;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        button:hover {
-            background-color: #ff5277;
-            transform: scale(1.05);
-        }
-        .hidden {
-            display: none !important;
-        }
+        select { background-color: #0f3460; color: white; }
+        button { background-color: #e94560; color: white; font-weight: bold; transition: 0.2s; }
+        button:hover { background-color: #ff5277; transform: scale(1.05); }
+        .hidden { display: none !important; }
         #ui-layer {
-            position: absolute;
-            top: 10px;
-            left: 20px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            pointer-events: none;
+            position: absolute; top: 10px; left: 20px;
+            font-size: 1.5rem; font-weight: bold; pointer-events: none;
         }
     </style>
 </head>
@@ -86,14 +41,11 @@
 
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-    
-    <div id="ui-layer" class="hidden">
-        Time Survived: <span id="timer">0.0</span>s
-    </div>
+    <div id="ui-layer" class="hidden">Time Survived: <span id="timer">0.0</span>s</div>
 
     <div id="start-menu" class="menu">
         <h1>THEY KNOW.</h1>
-        <p>Use W, A, S, D or Arrow Keys to run. Survive as long as you can.</p>
+        <p>Use W, A, S, D or Arrows. Use walls to trap the seekers!</p>
         <select id="map-select">
             <option value="0">Map 1: The Cross</option>
             <option value="1">Map 2: The Maze</option>
@@ -113,56 +65,45 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    // Game state
     let gameRunning = false;
     let startTime = 0;
     let surviveTime = 0;
     let animationId;
     
-    // Inputs
-    const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
-    
-    window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
-    window.addEventListener('keyup', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+    // Better input handling (ignores caps lock)
+    const keys = {};
+    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; keys[e.key] = true; });
+    window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; keys[e.key] = false; });
 
-    // Entities
-    const player = { x: 400, y: 300, size: 20, speed: 4, color: '#00d2ff' };
+    const player = { x: 400, y: 300, size: 20, speed: 5, color: '#00d2ff' };
     let seekers = [];
     let walls = [];
 
-    // Map Definitions
     const maps = [
-        // Map 0: The Cross
-        [
-            {x: 350, y: 100, w: 100, h: 400},
-            {x: 150, y: 250, w: 500, h: 100}
+        [ // Map 0: The Cross
+            {x: 350, y: 100, w: 100, h: 400}, {x: 150, y: 250, w: 500, h: 100}
         ],
-        // Map 1: The Maze
-        [
-            {x: 100, y: 100, w: 600, h: 20},
-            {x: 100, y: 100, w: 20, h: 300},
-            {x: 250, y: 250, w: 450, h: 20},
-            {x: 100, y: 480, w: 600, h: 20},
+        [ // Map 1: The Maze
+            {x: 100, y: 100, w: 600, h: 20}, {x: 100, y: 100, w: 20, h: 300},
+            {x: 250, y: 250, w: 450, h: 20}, {x: 100, y: 480, w: 600, h: 20},
             {x: 680, y: 250, w: 20, h: 250}
         ],
-        // Map 2: Open Arena
-        []
+        [] // Map 2: Open Arena
     ];
 
     function spawnSeekers() {
         seekers = [
             { x: 50, y: 50, size: 25, speed: 2.5, color: '#e94560' },
-            { x: 750, y: 550, size: 25, speed: 2.8, color: '#e94560' },
-            { x: 750, y: 50, size: 25, speed: 2.2, color: '#e94560' }
+            { x: 700, y: 500, size: 25, speed: 2.8, color: '#e94560' },
+            { x: 700, y: 50, size: 25, speed: 2.2, color: '#e94560' }
         ];
     }
 
-    function checkWallCollision(newX, newY) {
+    // Dynamic collision checker for both player and seekers
+    function checkWallCollision(newX, newY, objSize) {
         for (let w of walls) {
-            if (newX < w.x + w.w &&
-                newX + player.size > w.x &&
-                newY < w.y + w.h &&
-                newY + player.size > w.y) {
+            if (newX < w.x + w.w && newX + objSize > w.x &&
+                newY < w.y + w.h && newY + objSize > w.y) {
                 return true; 
             }
         }
@@ -172,65 +113,56 @@
     function update() {
         if (!gameRunning) return;
 
-        // Player Movement Logic
+        // Player Movement
         let dx = 0; let dy = 0;
-        if (keys.w || keys.ArrowUp) dy -= player.speed;
-        if (keys.s || keys.ArrowDown) dy += player.speed;
-        if (keys.a || keys.ArrowLeft) dx -= player.speed;
-        if (keys.d || keys.ArrowRight) dx += player.speed;
+        if (keys['w'] || keys['arrowup']) dy -= player.speed;
+        if (keys['s'] || keys['arrowdown']) dy += player.speed;
+        if (keys['a'] || keys['arrowleft']) dx -= player.speed;
+        if (keys['d'] || keys['arrowright']) dx += player.speed;
 
-        // Apply movement with wall sliding
-        if (dx !== 0 && !checkWallCollision(player.x + dx, player.y)) {
-            player.x += dx;
-        }
-        if (dy !== 0 && !checkWallCollision(player.x, player.y + dy)) {
-            player.y += dy;
-        }
+        // Player Wall Sliding
+        if (dx !== 0 && !checkWallCollision(player.x + dx, player.y, player.size)) player.x += dx;
+        if (dy !== 0 && !checkWallCollision(player.x, player.y + dy, player.size)) player.y += dy;
 
-        // Screen bounds for player
+        // Keep player in bounds
         player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
         player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 
-        // AI Seeker Logic (They track directly to player)
+        // Seeker AI with wall collision
         seekers.forEach(seeker => {
             let angle = Math.atan2(player.y - seeker.y, player.x - seeker.x);
-            seeker.x += Math.cos(angle) * seeker.speed;
-            seeker.y += Math.sin(angle) * seeker.speed;
+            let sdx = Math.cos(angle) * seeker.speed;
+            let sdy = Math.sin(angle) * seeker.speed;
 
-            // Collision with player (Game Over)
+            // Seekers now slide against walls too!
+            if (!checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.x += sdx;
+            if (!checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.y += sdy;
+
+            // Check if caught
             let distX = player.x - seeker.x;
             let distY = player.y - seeker.y;
-            let distance = Math.sqrt(distX*distX + distY*distY);
-            if (distance < (player.size/2 + seeker.size/2)) {
+            if (Math.sqrt(distX*distX + distY*distY) < (player.size/2 + seeker.size/2)) {
                 gameOver();
             }
         });
 
-        // Timer
+        // Update Timer
         surviveTime = ((Date.now() - startTime) / 1000).toFixed(1);
         document.getElementById('timer').innerText = surviveTime;
     }
 
     function draw() {
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Walls
         ctx.fillStyle = '#0f3460';
-        walls.forEach(w => {
-            ctx.fillRect(w.x, w.y, w.w, w.h);
-        });
+        walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
 
-        // Draw Player
         ctx.fillStyle = player.color;
         ctx.fillRect(player.x, player.y, player.size, player.size);
 
-        // Draw Seekers
         seekers.forEach(seeker => {
             ctx.fillStyle = seeker.color;
             ctx.fillRect(seeker.x, seeker.y, seeker.size, seeker.size);
-            
-            // Creepy "Eye" indicating they are looking at you
             ctx.fillStyle = 'white';
             ctx.fillRect(seeker.x + 5, seeker.y + 5, 5, 5);
         });
@@ -239,19 +171,17 @@
     function loop() {
         update();
         draw();
-        if (gameRunning) {
-            animationId = requestAnimationFrame(loop);
-        }
+        if (gameRunning) animationId = requestAnimationFrame(loop);
     }
 
     function startGame() {
+        // Ensure the window has focus so keys work immediately
+        window.focus(); 
+        
         document.getElementById('start-menu').classList.add('hidden');
         document.getElementById('ui-layer').classList.remove('hidden');
         
-        let mapIndex = document.getElementById('map-select').value;
-        walls = maps[mapIndex];
-
-        // Reset Player
+        walls = maps[document.getElementById('map-select').value];
         player.x = 400; player.y = 300;
         
         spawnSeekers();

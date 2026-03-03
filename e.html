@@ -3,43 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>War with Cubes: Blood Hunger</title>
+    <title>War with Cubes: Long War Edition</title>
     <style>
         :root {
             --primary: #00f2ff;
             --secondary: #ff0055;
-            --bg: #030305;
-            --panel: rgba(15, 15, 25, 0.9);
-            --accent: #ffaa00;
+            --bg: #020204;
+            --panel: rgba(10, 10, 18, 0.95);
         }
 
+        /* Essential for fixing the zoom problem */
         body, html {
             margin: 0; padding: 0;
             width: 100%; height: 100%;
             overflow: hidden;
             background-color: var(--bg);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', -apple-system, sans-serif;
             color: #fff;
         }
 
-        canvas { display: block; }
-
-        /* --- NON-ZOOMING UI LAYER --- */
-        #ui-layer {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none; /* Allows clicking through to canvas */
-            z-index: 10;
+        canvas { 
+            display: block; 
+            z-index: 1; /* Sits behind the UI */
         }
 
-        #ui-layer > * { pointer-events: auto; }
+        /* --- THE FIXED UI LAYER --- */
+        #ui-layer {
+            position: fixed; /* Physically locks UI to the screen */
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; /* Allows mouse through to game */
+            z-index: 10; 
+        }
+
+        #ui-layer > * { pointer-events: auto; } /* Buttons/LB remain clickable */
 
         /* --- MAIN MENU --- */
         #main-menu {
-            position: absolute;
+            position: fixed;
             inset: 0;
-            background: radial-gradient(circle at center, #101025 0%, #030305 100%);
+            background: radial-gradient(circle at center, #0a0a1a 0%, #020204 100%);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             z-index: 100;
@@ -47,171 +50,129 @@
 
         .menu-card {
             background: var(--panel);
-            padding: 50px;
-            border-radius: 30px;
+            padding: 40px;
+            border-radius: 24px;
             border: 1px solid rgba(0, 242, 255, 0.2);
             text-align: center;
             backdrop-filter: blur(20px);
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
         h1 {
-            font-size: 4rem;
-            margin: 0;
-            background: linear-gradient(45deg, var(--primary), #7000ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-transform: uppercase;
-            letter-spacing: 12px;
+            font-size: 3rem; margin: 0;
+            letter-spacing: 10px; color: var(--primary);
+            text-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+        }
+
+        .input-group { margin: 25px 0; }
+        input[type="number"] {
+            background: #000; border: 1px solid var(--primary);
+            color: var(--primary); padding: 10px; border-radius: 8px;
+            width: 80px; text-align: center; font-size: 1.1rem;
         }
 
         button {
-            background: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 50px;
-            margin: 10px;
-            transition: 0.3s;
-            text-transform: uppercase;
+            background: transparent; color: var(--primary);
+            border: 1px solid var(--primary); padding: 12px 30px;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer;
+            border-radius: 8px; margin: 5px; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 1px;
         }
 
-        button:hover {
-            background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 30px var(--primary);
-            transform: translateY(-3px);
-        }
+        button:hover { background: var(--primary); color: #000; box-shadow: 0 0 20px var(--primary); }
 
-        /* --- BETTER LEADERBOARD --- */
+        /* --- LEADERBOARD --- */
         #leaderboard {
-            position: absolute;
+            position: fixed;
             top: 20px; right: 20px;
-            width: 280px;
+            width: 260px;
             background: var(--panel);
-            border-radius: 15px;
+            border-radius: 12px;
             padding: 15px;
             border: 1px solid rgba(255,255,255,0.05);
-            max-height: 50vh;
-            overflow-y: auto;
+            max-height: 60vh; overflow-y: auto;
         }
 
-        .lb-header {
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 0.9rem;
-            border-bottom: 1px solid #333;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+        .lb-title { color: var(--primary); font-size: 0.8rem; font-weight: 800; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        .lb-row {
             display: flex; justify-content: space-between;
+            padding: 6px 4px; border-radius: 4px; cursor: pointer;
+            font-size: 0.85rem; border-bottom: 1px solid #111;
         }
-
-        .lb-entry {
-            display: grid;
-            grid-template-columns: 20px 1fr 50px;
-            gap: 10px;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            align-items: center;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .lb-entry:hover { background: rgba(255,255,255,0.1); }
-        .lb-rank { color: #666; font-weight: bold; }
-        .lb-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .lb-kills { color: var(--accent); font-weight: bold; text-align: right; }
+        .lb-row:hover { background: rgba(255,255,255,0.05); }
 
         /* --- STATS PANEL --- */
         #stats-panel {
-            position: absolute;
+            position: fixed;
             bottom: 20px; left: 20px;
-            width: 320px;
+            width: 300px;
             background: var(--panel);
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 20px;
             display: none;
-            border-left: 5px solid var(--primary);
+            border: 1px solid rgba(0, 242, 255, 0.3);
         }
 
-        .h-bar-container { height: 10px; background: #222; border-radius: 5px; margin: 15px 0; overflow: hidden; }
-        .h-bar-fill { height: 100%; background: #00ff88; width: 100%; transition: 0.3s; }
+        .h-bar { height: 6px; background: #111; border-radius: 3px; margin: 12px 0; overflow: hidden; }
+        .h-fill { height: 100%; background: #00ff88; transition: width 0.4s cubic-bezier(0.1, 0, 0, 1); }
 
-        /* --- JOIN BUTTON --- */
-        #join-btn-container {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+        #join-overlay {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
         }
 
-        #join-game-btn {
-            border-color: var(--secondary);
-            color: var(--secondary);
-        }
-
-        #join-game-btn:hover {
-            background: var(--secondary);
-            color: #fff;
-            box-shadow: 0 0 30px var(--secondary);
-        }
+        .hint { font-size: 0.7rem; color: #444; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div id="main-menu">
     <div class="menu-card">
-        <h1>CUBE WAR</h1>
-        <p style="opacity: 0.5; margin-bottom: 30px;">500 CUBES. ONE SURVIVOR.</p>
-        <button onclick="initGame(false)">Spectate War</button>
-        <button onclick="initGame(true)" style="border-color: var(--secondary); color: var(--secondary);">Play as Cube</button>
+        <h1>WAR WITH CUBES</h1>
+        <div class="input-group">
+            <label>NUMBER OF WARRIORS (3 - 500)</label><br><br>
+            <input type="number" id="player-count" value="100" min="3" max="500">
+        </div>
+        <button onclick="init(false)">Spectate War</button>
+        <button onclick="init(true)" style="border-color: var(--secondary); color: var(--secondary);">Join the War</button>
+        <div class="hint">A simulation of attrition.</div>
     </div>
 </div>
 
 <div id="ui-layer">
     <div id="leaderboard">
-        <div class="lb-header">
-            <span>WARRIOR</span>
-            <span>KILLS</span>
-        </div>
+        <div class="lb-title">BATTLE RANKINGS</div>
         <div id="lb-list"></div>
     </div>
 
     <div id="stats-panel">
-        <div style="font-size: 1.2rem; font-weight: bold;" id="st-name">Name</div>
-        <div style="font-size: 0.8rem; opacity: 0.7; color: var(--primary)" id="st-emotion">Aggressive</div>
-        <div class="h-bar-container"><div class="h-bar-fill" id="st-health"></div></div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+        <div style="font-weight: bold; font-size: 1.1rem;" id="st-name">Name</div>
+        <div id="st-emotion" style="font-size: 0.75rem; color: #888;">Idle</div>
+        <div class="h-bar"><div class="h-fill" id="st-health"></div></div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
             <span>Kills: <b id="st-kills">0</b></span>
-            <span>Stamina: <b id="st-stamina">100</b></span>
+            <span>Energy: <b id="st-energy">100</b></span>
         </div>
-        <div style="margin-top: 20px; display: flex; gap: 5px;">
-            <button onclick="admin('kill')" style="flex:1; padding: 5px; font-size: 0.7rem;">Kill</button>
-            <button onclick="admin('heal')" style="flex:1; padding: 5px; font-size: 0.7rem;">Heal</button>
-            <button onclick="admin('god')" id="god-btn" style="flex:1; padding: 5px; font-size: 0.7rem;">God</button>
+        <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+            <button style="font-size: 0.6rem; padding: 5px;" onclick="admin('kill')">Kill</button>
+            <button style="font-size: 0.6rem; padding: 5px;" onclick="admin('heal')">Heal</button>
+            <button style="font-size: 0.6rem; padding: 5px;" onclick="admin('god')" id="god-btn">God</button>
         </div>
-        <button onclick="closeStats()" style="width: 100%; border: none; font-size: 0.7rem; margin-top: 10px; opacity: 0.5;">Close</button>
+        <button onclick="closeStats()" style="width: 100%; border: none; font-size: 0.6rem; margin-top: 10px; opacity: 0.3;">Click Map to Deselect</button>
     </div>
 
-    <div id="join-btn-container">
-        <button id="join-game-btn" onclick="joinMidGame()">Join as Player</button>
+    <div id="join-overlay">
+        <button id="mid-join-btn" onclick="joinNow()">DEPLOY TO BATTLE</button>
     </div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
 <script>
-/** @type {HTMLCanvasElement} */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 let entities = [];
 let obstacles = [];
-let mapSize = 3500;
+let mapSize = 3000;
 let circleRadius = 0;
 let isShrinking = false;
 let startTime = 0;
@@ -219,19 +180,20 @@ let gameRunning = false;
 let userPlayer = null;
 let selectedEntity = null;
 
-let camera = { x: 0, y: 0, zoom: 0.3, target: null };
+let camera = { x: 0, y: 0, zoom: 0.2, target: null };
 const keys = {};
 
-// Camera and Mouse
+// Camera Control
 let isDragging = false;
 let lastMouse = { x: 0, y: 0 };
 
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup', e => keys[e.code] = false);
 window.addEventListener('wheel', e => {
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    camera.zoom = Math.max(0.05, Math.min(3, camera.zoom * delta));
-});
+    const delta = e.deltaY > 0 ? 0.92 : 1.08;
+    camera.zoom = Math.max(0.04, Math.min(2.5, camera.zoom * delta));
+}, { passive: false });
+
 canvas.addEventListener('mousedown', e => { if(e.button === 2) isDragging = true; lastMouse = {x: e.clientX, y: e.clientY}; });
 window.addEventListener('mouseup', () => isDragging = false);
 window.addEventListener('mousemove', e => {
@@ -243,174 +205,174 @@ window.addEventListener('mousemove', e => {
     lastMouse = {x: e.clientX, y: e.clientY};
 });
 
-function initGame(asPlayer) {
+function init(asPlayer) {
+    const count = parseInt(document.getElementById('player-count').value) || 100;
     document.getElementById('main-menu').style.display = 'none';
-    const count = 500;
     entities = [];
     obstacles = [];
-    circleRadius = mapSize * 0.7;
+    mapSize = Math.max(2000, count * 25);
+    circleRadius = mapSize * 0.8;
 
-    // Build Obstacles
-    for(let i=0; i<80; i++) {
+    // Obstacles
+    for(let i=0; i<60; i++) {
         obstacles.push({
             x: (Math.random()-0.5) * mapSize,
             y: (Math.random()-0.5) * mapSize,
-            w: 50 + Math.random()*150,
-            h: 50 + Math.random()*150
+            w: 60 + Math.random()*200,
+            h: 60 + Math.random()*200
         });
     }
 
-    // Spawn AI
-    for(let i=0; i<count; i++) {
-        spawnEntity(i, (asPlayer && i === 0));
-    }
+    for(let i=0; i<count; i++) spawn(i, (asPlayer && i===0));
 
     gameRunning = true;
     startTime = Date.now();
     requestAnimationFrame(loop);
 }
 
-function spawnEntity(id, isPlayer) {
-    let rx, ry, collided = true;
-    while(collided) {
-        rx = (Math.random()-0.5) * (mapSize*0.8);
-        ry = (Math.random()-0.5) * (mapSize*0.8);
-        collided = checkWall(rx, ry, 20);
+function spawn(id, isP) {
+    let rx, ry, col = true;
+    while(col) {
+        rx = (Math.random()-0.5) * (mapSize*0.9);
+        ry = (Math.random()-0.5) * (mapSize*0.9);
+        col = checkWall(rx, ry, 25);
     }
-    const e = new Entity(id, rx, ry, isPlayer);
+    const e = new Entity(id, rx, ry, isP);
     entities.push(e);
-    if(isPlayer) {
+    if(isP) {
         userPlayer = e;
-        document.getElementById('join-game-btn').style.display = 'none';
+        document.getElementById('mid-join-btn').style.display = 'none';
     }
 }
 
-function joinMidGame() {
-    if(!gameRunning) return;
-    spawnEntity(Date.now(), true);
-}
+function joinNow() { spawn(Date.now(), true); }
 
 class Entity {
-    constructor(id, x, y, isPlayer) {
+    constructor(id, x, y, isP) {
         this.id = id;
         this.x = x; this.y = y;
-        this.isPlayer = isPlayer;
-        this.name = isPlayer ? "YOU" : "Agent_"+id.toString().slice(-3);
-        this.color = isPlayer ? "#ffffff" : `hsl(${Math.random()*360}, 80%, 60%)`;
-        this.health = 100;
+        this.isP = isP;
+        this.name = isP ? "YOU" : "Unit-"+id;
+        this.color = isP ? "#fff" : `hsl(${Math.random()*360}, 60%, 50%)`;
+        this.hp = 100;
         this.kills = 0;
-        this.stamina = 100;
-        this.size = 22;
+        this.energy = 100;
+        this.size = 20;
         this.vx = 0; this.vy = 0;
         this.target = null;
         this.emotion = "Idle";
         this.isGod = false;
+        this.idleTimer = Math.random() * 100;
     }
 
     update() {
-        if(this.health <= 0) return;
+        if(this.hp <= 0) return;
 
-        // Stamina logic
-        if(this.stamina < 100) this.stamina += 0.25;
+        if(this.energy < 100) this.energy += 0.15;
+        const dist = Math.sqrt(this.x**2 + this.y**2);
 
-        const distFromCenter = Math.sqrt(this.x**2 + this.y**2);
+        // Movement Speed
+        let walkSpeed = 1.2;
+        let sprintSpeed = 3.5;
 
-        // --- BRAIN PRIORITY 1: THE RED ZONE ---
-        if(isShrinking && distFromCenter > circleRadius * 0.85) {
-            this.emotion = "Terrified";
-            const angle = Math.atan2(0 - this.y, 0 - this.x);
-            const speed = (this.stamina > 10) ? 6 : 3;
-            this.vx += Math.cos(angle) * speed;
-            this.vy += Math.sin(angle) * speed;
-            if(this.stamina > 10) this.stamina -= 0.5;
-            
-            if(distFromCenter > circleRadius) this.health -= 0.3; // Damage in red
+        // EMERGENCY: Red Zone Logic
+        if(isShrinking && dist > circleRadius * 0.8) {
+            this.emotion = "RETREATING";
+            const ang = Math.atan2(-this.y, -this.x);
+            const move = (this.energy > 5) ? sprintSpeed : walkSpeed;
+            this.vx += Math.cos(ang) * move;
+            this.vy += Math.sin(ang) * move;
+            if(this.energy > 5) this.energy -= 0.4;
+            if(dist > circleRadius) this.hp -= 0.2;
         } 
-        // --- BRAIN PRIORITY 2: COMBAT ---
-        else if(this.isPlayer) {
-            this.handlePlayer();
+        else if(this.isP) {
+            this.handlePlayer(walkSpeed, sprintSpeed);
         } else {
-            this.handleAI();
+            this.handleAI(walkSpeed);
         }
 
-        // Apply movement & Collision
+        // Apply
         const nx = this.x + this.vx;
         const ny = this.y + this.vy;
-        
         if(!checkWall(nx, this.y, this.size)) this.x = nx;
         if(!checkWall(this.x, ny, this.size)) this.y = ny;
 
-        this.vx *= 0.8;
-        this.vy *= 0.8;
+        this.vx *= 0.7;
+        this.vy *= 0.7;
     }
 
-    handlePlayer() {
-        let s = 4;
-        if(keys['ShiftLeft'] && this.stamina > 1) {
-            s = 7 * (1 + (1 - this.health/100));
-            this.stamina -= 0.8;
+    handlePlayer(w, s) {
+        let speed = w;
+        if(keys['ShiftLeft'] && this.energy > 1) {
+            speed = s;
+            this.energy -= 0.6;
             this.emotion = "Sprinting";
         } else {
-            this.emotion = "Combat Ready";
+            this.emotion = "Walking";
         }
-        if(keys['KeyW']) this.vy -= s;
-        if(keys['KeyS']) this.vy += s;
-        if(keys['KeyA']) this.vx -= s;
-        if(keys['KeyD']) this.vx += s;
+        if(keys['KeyW']) this.vy -= speed;
+        if(keys['KeyS']) this.vy += speed;
+        if(keys['KeyA']) this.vx -= speed;
+        if(keys['KeyD']) this.vx += speed;
     }
 
-    handleAI() {
-        // Find closest target
-        if(!this.target || this.target.health <= 0 || Math.random() < 0.02) {
-            let closest = null;
-            let minDist = 1200; // Blood hunger range
-            for(let i=0; i<40; i++) { // Sample randoms for perf
+    handleAI(walk) {
+        this.idleTimer--;
+
+        // Low Health flee
+        if(this.hp < 30) {
+            this.emotion = "Vulnerable";
+            this.vx += (Math.random()-0.5) * walk;
+            this.vy += (Math.random()-0.5) * walk;
+            return;
+        }
+
+        // Hunt if close
+        if(!this.target || this.target.hp <= 0 || Math.random() < 0.01) {
+            let nearest = null;
+            let dMin = 400; // Small sight range for "Less Blood Hungry"
+            for(let i=0; i<30; i++){
                 let other = entities[Math.floor(Math.random()*entities.length)];
-                if(other === this || other.health <= 0) continue;
+                if(other === this || other.hp <= 0) continue;
                 let d = Math.sqrt((other.x-this.x)**2 + (other.y-this.y)**2);
-                if(d < minDist) { minDist = d; closest = other; }
+                if(d < dMin) { dMin = d; nearest = other; }
             }
-            this.target = closest;
+            this.target = nearest;
         }
 
         if(this.target) {
-            this.emotion = "Blood Hungry";
+            this.emotion = "Engaging";
             const dx = this.target.x - this.x;
             const dy = this.target.y - this.y;
             const d = Math.sqrt(dx*dx + dy*dy);
-            const speed = (this.health < 30) ? 2 : 4;
-            this.vx += (dx/d) * speed;
-            this.vy += (dy/d) * speed;
-
-            if(d < 30) {
-                this.target.health -= 1.5;
-                if(this.target.health <= 0) this.kills++;
+            this.vx += (dx/d) * walk;
+            this.vy += (dy/d) * walk;
+            if(d < 25) {
+                this.target.takeHit(0.6, this);
             }
         } else {
-            this.emotion = "Searching...";
-            // Drift toward center to avoid edge camping
-            this.vx += (0 - this.x) * 0.001;
-            this.vy += (0 - this.y) * 0.001;
+            this.emotion = "Wandering";
+            if(this.idleTimer < 0) {
+                this.vx += (Math.random()-0.5) * 10;
+                this.vy += (Math.random()-0.5) * 10;
+                this.idleTimer = 100 + Math.random()*200;
+            }
         }
     }
 
+    takeHit(amt, attacker) {
+        if(this.isGod) return;
+        this.hp -= amt;
+        if(this.hp <= 0) { this.hp = 0; if(attacker) attacker.kills++; }
+    }
+
     draw() {
-        if(this.health <= 0) return;
+        if(this.hp <= 0) return;
         ctx.save();
         ctx.translate(this.x, this.y);
-        
-        // Glow
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = this.color;
-        
+        ctx.shadowBlur = 10; ctx.shadowColor = this.color;
         ctx.fillStyle = this.color;
         ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
-        
-        // Face
-        ctx.fillStyle = "#000";
-        ctx.fillRect(2, -5, 4, 4);
-        ctx.fillRect(-6, -5, 4, 4);
-
         ctx.restore();
     }
 }
@@ -429,20 +391,19 @@ function loop() {
     const elapsed = (Date.now() - startTime) / 1000;
     if(elapsed > 60) {
         isShrinking = true;
-        circleRadius = Math.max(250, circleRadius - 0.6);
+        circleRadius = Math.max(300, circleRadius - 0.5);
     }
 
-    // Camera move
     if(camera.target) {
-        camera.x += (camera.target.x - camera.x) * 0.1;
-        camera.y += (camera.target.y - camera.y) * 0.1;
-    } else if(userPlayer && userPlayer.health > 0) {
-        camera.x += (userPlayer.x - camera.x) * 0.1;
-        camera.y += (userPlayer.y - camera.y) * 0.1;
+        camera.x += (camera.target.x - camera.x) * 0.08;
+        camera.y += (camera.target.y - camera.y) * 0.08;
+    } else if(userPlayer && userPlayer.hp > 0) {
+        camera.x += (userPlayer.x - camera.x) * 0.08;
+        camera.y += (userPlayer.y - camera.y) * 0.08;
     }
 
-    // Draw World
-    ctx.fillStyle = varColor('--bg');
+    // World Rendering
+    ctx.fillStyle = "#020204";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     ctx.save();
@@ -451,57 +412,48 @@ function loop() {
     ctx.translate(-camera.x, -camera.y);
 
     // Grid
-    ctx.strokeStyle = "rgba(255,255,255,0.03)";
-    for(let i=-mapSize/2; i<=mapSize/2; i+=200) {
+    ctx.strokeStyle = "rgba(255,255,255,0.02)";
+    for(let i=-mapSize/2; i<=mapSize/2; i+=250) {
         ctx.beginPath(); ctx.moveTo(i, -mapSize/2); ctx.lineTo(i, mapSize/2); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-mapSize/2, i); ctx.lineTo(mapSize/2, i); ctx.stroke();
     }
 
     // Red Zone
     ctx.strokeStyle = isShrinking ? "#ff0055" : "#00f2ff";
-    ctx.lineWidth = 20 / camera.zoom;
+    ctx.lineWidth = 15 / camera.zoom;
     ctx.beginPath(); ctx.arc(0,0,circleRadius,0,Math.PI*2); ctx.stroke();
 
     // Obstacles
-    ctx.fillStyle = "#11111a";
-    ctx.strokeStyle = "rgba(0,242,255,0.1)";
-    ctx.lineWidth = 2;
-    obstacles.forEach(o => {
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-        ctx.strokeRect(o.x, o.y, o.w, o.h);
-    });
+    ctx.fillStyle = "#080810";
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    obstacles.forEach(o => { ctx.fillRect(o.x, o.y, o.w, o.h); ctx.strokeRect(o.x, o.y, o.w, o.h); });
 
-    entities.forEach(e => {
-        e.update();
-        e.draw();
-    });
-
+    entities.forEach(e => { e.update(); e.draw(); });
     ctx.restore();
-    updateUI();
+
+    updateHUD();
     requestAnimationFrame(loop);
 }
 
-function updateUI() {
-    const alive = entities.filter(e => e.health > 0).sort((a,b) => b.kills - a.kills);
-    const top = alive.slice(0, 15);
-
-    document.getElementById('lb-list').innerHTML = top.map((e, i) => `
-        <div class="lb-entry" onclick="selectEnt(${e.id})">
-            <span class="lb-rank">${i+1}</span>
-            <span class="lb-name" style="color:${e.color}">${e.name}</span>
-            <span class="lb-kills">${e.kills}</span>
+function updateHUD() {
+    const alive = entities.filter(e => e.hp > 0).sort((a,b) => b.kills - a.kills);
+    document.getElementById('lb-list').innerHTML = alive.slice(0, 15).map((e, i) => `
+        <div class="lb-row" onclick="select(${e.id})">
+            <span style="color:${e.color}">${i+1}. ${e.name}</span>
+            <span style="font-weight:bold">${e.kills}</span>
         </div>
     `).join('');
 
     if(selectedEntity) {
+        document.getElementById('stats-panel').style.display = 'block';
         document.getElementById('st-name').innerText = selectedEntity.name;
         document.getElementById('st-name').style.color = selectedEntity.color;
         document.getElementById('st-emotion').innerText = selectedEntity.emotion;
         document.getElementById('st-kills').innerText = selectedEntity.kills;
-        document.getElementById('st-stamina').innerText = Math.floor(selectedEntity.stamina);
-        document.getElementById('st-health').style.width = selectedEntity.health + "%";
+        document.getElementById('st-energy').innerText = Math.floor(selectedEntity.energy);
+        document.getElementById('st-health').style.width = selectedEntity.hp + "%";
         document.getElementById('god-btn').style.background = selectedEntity.isGod ? "var(--primary)" : "transparent";
-        if(selectedEntity.health <= 0) closeStats();
+        if(selectedEntity.hp <= 0) closeStats();
     }
 }
 
@@ -509,30 +461,24 @@ canvas.addEventListener('click', e => {
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX - rect.left - canvas.width/2) / camera.zoom + camera.x;
     const my = (e.clientY - rect.top - canvas.height/2) / camera.zoom + camera.y;
-    const found = entities.find(ent => ent.health > 0 && Math.abs(ent.x - mx) < 30 && Math.abs(ent.y - my) < 30);
-    if(found) selectEnt(found.id);
+    const found = entities.find(ent => ent.hp > 0 && Math.abs(ent.x - mx) < 30 && Math.abs(ent.y - my) < 30);
+    if(found) select(found.id); else closeStats();
 });
 
-function selectEnt(id) {
+function select(id) {
     selectedEntity = entities.find(e => e.id === id);
     camera.target = selectedEntity;
-    document.getElementById('stats-panel').style.display = 'block';
 }
 
-function closeStats() {
-    selectedEntity = null;
-    camera.target = null;
-    document.getElementById('stats-panel').style.display = 'none';
-}
+function closeStats() { selectedEntity = null; camera.target = null; document.getElementById('stats-panel').style.display = 'none'; }
 
 function admin(type) {
     if(!selectedEntity) return;
-    if(type === 'kill') selectedEntity.health = 0;
-    if(type === 'heal') selectedEntity.health = 100;
+    if(type === 'kill') selectedEntity.hp = 0;
+    if(type === 'heal') selectedEntity.hp = 100;
     if(type === 'god') selectedEntity.isGod = !selectedEntity.isGod;
 }
 
-function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 </script>
 </body>

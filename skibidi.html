@@ -3,52 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hide & Seek - The Darkness Update</title>
+    <title>AI Hide & Seek - The Escape Update</title>
     <style>
-        body {
-            margin: 0; padding: 0; background-color: #050505; color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; overflow: hidden;
-        }
-        #game-container {
-            position: relative; width: 800px; height: 600px;
-            box-shadow: 0 0 40px rgba(0,0,0,1); background-color: #000;
-            overflow: hidden; border: 2px solid #333;
-        }
+        body { margin: 0; padding: 0; background-color: #050505; color: white; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-container { position: relative; width: 800px; height: 600px; box-shadow: 0 0 40px rgba(0,0,0,1); background-color: #000; overflow: hidden; border: 2px solid #333; }
         canvas { display: block; }
-        .menu {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 5, 10, 0.95); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 10;
-        }
-        h1 { font-size: 3.5rem; margin-bottom: 5px; color: #e94560; text-transform: uppercase; letter-spacing: 2px;}
-        p { font-size: 1.1rem; margin-bottom: 25px; text-align: center; max-width: 600px; line-height: 1.5; color: #ccc;}
-        .controls { display: flex; gap: 15px; margin-bottom: 20px; }
-        select, button {
-            padding: 12px 20px; font-size: 1.2rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
-        }
+        .menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 10, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        h1 { font-size: 3.5rem; margin-bottom: 5px; color: #e94560; text-transform: uppercase; letter-spacing: 2px; text-align: center;}
+        p { font-size: 1.1rem; margin-bottom: 20px; text-align: center; max-width: 600px; line-height: 1.5; color: #ccc;}
+        .controls { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;}
+        select, button { padding: 12px 20px; font-size: 1.2rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         select { background-color: #0f3460; color: white; border: 2px solid #1a1a2e; }
         button { background-color: #e94560; color: white; transition: 0.2s; }
         button:hover { background-color: #ff5277; transform: scale(1.05); }
+        button:disabled { background-color: #555; cursor: not-allowed; transform: none; }
         .hidden { display: none !important; }
         
-        /* UI Styling */
-        #ui-layer {
-            position: absolute; top: 15px; left: 20px; right: 20px;
-            font-size: 1.2rem; font-weight: bold; pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            display: flex; justify-content: space-between; align-items: flex-start;
-        }
-        #stamina-container {
-            width: 200px; height: 20px; background: rgba(0,0,0,0.5); 
-            border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-top: 10px;
-        }
-        #stamina-bar {
-            width: 100%; height: 100%; background: #fbbf24; transition: width 0.1s linear;
-        }
+        #ui-layer { position: absolute; top: 15px; left: 20px; right: 20px; font-size: 1.2rem; font-weight: bold; pointer-events: none; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); display: flex; justify-content: space-between; align-items: flex-start; z-index: 5;}
+        #stamina-container { width: 200px; height: 15px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-top: 5px; }
+        #stamina-bar { width: 100%; height: 100%; background: #fbbf24; transition: width 0.1s linear; }
         .ui-text { display: flex; flex-direction: column; gap: 5px; }
-        .quest-text { color: #4ade80; font-size: 1.4rem; }
+        .quest-text { color: #4ade80; font-size: 1.4rem; text-align: right; }
+        .bank-text { color: #a78bfa; font-size: 1.2rem; margin-bottom: 15px;}
+        
+        #escape-ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; background: rgba(0,0,0,0.8); padding: 20px; border: 2px solid #e94560; border-radius: 10px; z-index: 6;}
+        #escape-ui h2 { color: #e94560; margin: 0 0 10px 0; font-size: 2rem;}
+        #escape-ui p { margin: 0; font-size: 1.5rem; color: white;}
     </style>
 </head>
 <body>
@@ -62,28 +42,62 @@
             <div id="stamina-container"><div id="stamina-bar"></div></div>
         </div>
         <div class="ui-text text-right">
-            <span class="quest-text">Cores Collected: <span id="quest-tracker">0/3</span></span>
+            <span class="quest-text">Orbs: <span id="quest-tracker">0/3</span></span>
+            <span style="color:#a78bfa">Bank: <span id="ingame-bank">0</span></span>
         </div>
+    </div>
+
+    <div id="escape-ui" class="hidden">
+        <h2>ESCAPE ZONE!</h2>
+        <p>MASH 'E' TO DROP ORBS!</p>
+        <p>Time: <span id="escape-timer">3.0</span>s</p>
+        <p>Left to drop: <span id="escape-count">0</span></p>
     </div>
 
     <div id="start-menu" class="menu">
         <h1>IN THE DARK</h1>
-        <p>Hold <b>SHIFT</b> to sprint. Collect all <b>3 Green Power Cores</b> to escape.<br>
-           Stay out of sight. If they see you, run.</p>
+        <div class="bank-text">Total Orbs in Bank: <span id="menu-bank">0</span></div>
+        <p>Collect all Orbs to reveal the Exit. Mash 'E' at the exit to escape!</p>
         
         <div class="controls">
             <select id="map-select">
-                <option value="0">Map: The Cross</option>
-                <option value="1">Map: The Maze</option>
-                <option value="2">Map: City Blocks</option>
-                <option value="3">Map: Open Arena</option>
+                <option value="0">Map: The Cross (3 Orbs)</option>
+                <option value="1">Map: The Maze (4 Orbs)</option>
+                <option value="2">Map: Neighborhood (6 Orbs)</option>
             </select>
             <select id="diff-select">
-                <option value="normal">Difficulty: Stealth (Sight)</option>
-                <option value="hard">Difficulty: Hunted (Omniscient)</option>
+                <option value="normal">AI: Normal (Line of Sight)</option>
+                <option value="hard">AI: Hard (Always Knows)</option>
             </select>
         </div>
-        <button onclick="startGame()">Enter the Darkness</button>
+        <div class="controls">
+            <button onclick="startGame()">Play Game</button>
+            <button onclick="showShop()">Shop</button>
+        </div>
+    </div>
+
+    <div id="shop-menu" class="menu hidden">
+        <h1>ORB SHOP</h1>
+        <div class="bank-text">Total Orbs in Bank: <span id="shop-bank">0</span></div>
+        
+        <div class="controls" style="flex-direction: column; align-items: center;">
+            <div style="display:flex; gap:10px; align-items: center; margin-bottom:10px;">
+                <div style="width:30px; height:30px; background:#00d2ff; border:2px solid white;"></div>
+                <button onclick="equipColor('#00d2ff')">Equip Default Blue</button>
+            </div>
+            <div style="display:flex; gap:10px; align-items: center; margin-bottom:10px;">
+                <div style="width:30px; height:30px; background:#fbbf24; border:2px solid white;"></div>
+                <button id="btn-color-gold" onclick="buyOrEquipColor('#fbbf24', 'gold', 10)">Buy Gold (10 Orbs)</button>
+            </div>
+            <div style="display:flex; gap:10px; align-items: center; margin-bottom:10px;">
+                <div style="width:30px; height:30px; background:#a855f7; border:2px solid white;"></div>
+                <button id="btn-color-purple" onclick="buyOrEquipColor('#a855f7', 'purple', 20)">Buy Purple (20 Orbs)</button>
+            </div>
+            <div style="display:flex; gap:10px; align-items: center; margin-top: 20px;">
+                <button id="btn-seeker-mode" style="background:#8b0000" onclick="buySeekerMode()">Unlock Seeker Mode (50 Orbs)</button>
+            </div>
+        </div>
+        <button onclick="showStartMenu()">Back to Menu</button>
     </div>
 
     <div id="game-end-menu" class="menu hidden">
@@ -97,70 +111,144 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
+    // Save Data Setup
+    let savedData = JSON.parse(localStorage.getItem('hideAndSeekSave')) || {
+        bank: 0, unlockedColors: [], seekerUnlocked: false, currentColor: '#00d2ff'
+    };
+    function saveGame() { localStorage.setItem('hideAndSeekSave', JSON.stringify(savedData)); updateBankDisplays(); }
+    
+    // Game State
     let gameRunning = false;
-    let startTime = 0;
-    let surviveTime = 0;
-    let animationId;
-    let difficulty = 'normal';
+    let gamePhase = 'playing'; // playing, escaping
+    let startTime = 0; let surviveTime = 0;
+    let escapeTimeLeft = 3.0; let orbsToDrop = 0;
+    let animationId; let difficulty = 'normal';
     
     // Mechanics
     let stamina = 100;
     let coresCollected = 0;
+    let requiredCores = 3;
+    let exitZone = { x: 0, y: 0, w: 100, h: 100, active: false };
     
     // World settings
-    const worldWidth = 1600;
-    const worldHeight = 1200;
+    const worldWidth = 1600; const worldHeight = 1200;
     let camera = { x: 0, y: 0, w: 800, h: 600 };
     
+    // Input Handling
     const keys = {};
-    window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+    window.addEventListener('keydown', e => { 
+        keys[e.key.toLowerCase()] = true; 
+        if(e.key.toLowerCase() === 'e' && gamePhase === 'escaping') attemptDropOrb();
+    });
     window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-    const player = { x: 100, y: 100, size: 20, baseSpeed: 4, sprintSpeed: 8, color: '#00d2ff' };
+    const player = { x: 100, y: 100, size: 20, baseSpeed: 2.5, sprintSpeed: 5.5, color: savedData.currentColor };
     let seekers = [];
     let walls = [];
     let cores = [];
 
-    // Map Definitions with Safe Spawns and Quests
+    // Maps Definition
     const maps = [
         { // Map 0: The Cross
-            spawn: {x: 150, y: 100},
-            walls: [ {x: 700, y: 200, w: 200, h: 800}, {x: 300, y: 500, w: 1000, h: 200} ],
-            cores: [ {x: 1400, y: 100}, {x: 100, y: 1000}, {x: 1400, y: 1000} ]
+            orbs: 3,
+            walls: [ {x: 700, y: 200, w: 200, h: 800}, {x: 300, y: 500, w: 1000, h: 200} ]
         },
         { // Map 1: The Maze
-            spawn: {x: 100, y: 100},
+            orbs: 4,
             walls: [
                 {x: 200, y: 200, w: 1200, h: 40}, {x: 200, y: 200, w: 40, h: 600},
                 {x: 500, y: 500, w: 900, h: 40}, {x: 200, y: 960, w: 1200, h: 40},
                 {x: 1360, y: 500, w: 40, h: 500}, {x: 500, y: 700, w: 40, h: 260}
-            ],
-            cores: [ {x: 1450, y: 100}, {x: 300, y: 600}, {x: 1200, y: 800} ]
+            ]
         },
-        { // Map 2: City Blocks
-            spawn: {x: 100, y: 100},
+        { // Map 2: Neighborhood (Houses with doors)
+            orbs: 6,
             walls: [
-                {x: 200, y: 200, w: 200, h: 200}, {x: 600, y: 200, w: 200, h: 200},
-                {x: 1000, y: 200, w: 200, h: 200}, {x: 200, y: 600, w: 200, h: 200},
-                {x: 600, y: 600, w: 400, h: 200}, {x: 1200, y: 600, w: 200, h: 400},
-                {x: 200, y: 1000, w: 800, h: 100}
-            ],
-            cores: [ {x: 1400, y: 400}, {x: 100, y: 1100}, {x: 1100, y: 900} ]
-        },
-        { // Map 3: Open Arena
-            spawn: {x: 800, y: 600},
-            walls: [],
-            cores: [ {x: 200, y: 200}, {x: 1400, y: 1000}, {x: 1400, y: 200} ]
+                // House 1 (Top Left)
+                {x: 100, y: 100, w: 300, h: 20}, {x: 100, y: 100, w: 20, h: 300}, 
+                {x: 100, y: 380, w: 150, h: 20}, {x: 380, y: 100, w: 20, h: 300},
+                // House 2 (Top Right)
+                {x: 1000, y: 100, w: 400, h: 20}, {x: 1000, y: 100, w: 20, h: 300},
+                {x: 1380, y: 100, w: 20, h: 300}, {x: 1150, y: 380, w: 250, h: 20},
+                // House 3 (Bottom Center)
+                {x: 500, y: 700, w: 600, h: 20}, {x: 500, y: 700, w: 20, h: 400},
+                {x: 1080, y: 700, w: 20, h: 400}, {x: 500, y: 1080, w: 200, h: 20}, {x: 850, y: 1080, w: 250, h: 20},
+                // Random block
+                {x: 600, y: 300, w: 200, h: 200}
+            ]
         }
     ];
 
-    function spawnSeekers() {
-        seekers = [
-            { x: 100, y: 800, size: 25, speed: 3.8, color: '#e94560', state: 'roam', vx: 1, vy: 1, lastSeen: null },
-            { x: 1400, y: 1000, size: 25, speed: 4.0, color: '#e94560', state: 'roam', vx: -1, vy: -1, lastSeen: null },
-            { x: 1400, y: 100, size: 25, speed: 3.5, color: '#e94560', state: 'roam', vx: -1, vy: 1, lastSeen: null },
-            { x: 800, y: 1000, size: 25, speed: 3.7, color: '#e94560', state: 'roam', vx: 1, vy: -1, lastSeen: null }
-        ];
+    function updateBankDisplays() {
+        document.getElementById('menu-bank').innerText = savedData.bank;
+        document.getElementById('shop-bank').innerText = savedData.bank;
+        document.getElementById('ingame-bank').innerText = savedData.bank;
+        
+        // Update Shop Buttons
+        let gBtn = document.getElementById('btn-color-gold');
+        if(savedData.unlockedColors.includes('gold')) { gBtn.innerText = "Equip Gold"; gBtn.style.background = "#4ade80"; }
+        
+        let pBtn = document.getElementById('btn-color-purple');
+        if(savedData.unlockedColors.includes('purple')) { pBtn.innerText = "Equip Purple"; pBtn.style.background = "#4ade80"; }
+        
+        let sBtn = document.getElementById('btn-seeker-mode');
+        if(savedData.seekerUnlocked) { sBtn.innerText = "Seeker Mode Unlocked!"; sBtn.disabled = true; sBtn.style.background = "#4ade80"; }
+    }
+
+    function buyOrEquipColor(hex, name, cost) {
+        if(savedData.unlockedColors.includes(name)) { equipColor(hex); return; }
+        if(savedData.bank >= cost) {
+            savedData.bank -= cost;
+            savedData.unlockedColors.push(name);
+            equipColor(hex);
+            saveGame();
+        } else { alert("Not enough orbs in your bank!"); }
+    }
+    
+    function buySeekerMode() {
+        if(savedData.bank >= 50) {
+            savedData.bank -= 50; savedData.seekerUnlocked = true; saveGame();
+            alert("Seeker mode UI unlocked! (Gameplay coming in next update)");
+        } else { alert("You need 50 Orbs to unlock this!"); }
+    }
+
+    function equipColor(hex) {
+        savedData.currentColor = hex; player.color = hex; saveGame();
+        alert("Color equipped!");
+    }
+
+    function getRandomSafePosition(size) {
+        let x, y, safe = false;
+        while (!safe) {
+            x = Math.random() * (worldWidth - 100) + 50;
+            y = Math.random() * (worldHeight - 100) + 50;
+            safe = !checkWallCollision(x, y, size);
+        }
+        return {x, y};
+    }
+
+    function spawnGameEntities(mapData) {
+        walls = mapData.walls;
+        requiredCores = mapData.orbs;
+        
+        let pSpawn = getRandomSafePosition(player.size);
+        player.x = pSpawn.x; player.y = pSpawn.y;
+
+        cores = [];
+        for(let i=0; i<requiredCores; i++) {
+            let pos = getRandomSafePosition(20);
+            cores.push({x: pos.x, y: pos.y, collected: false});
+        }
+
+        exitZone.active = false;
+        let ePos = getRandomSafePosition(100);
+        exitZone.x = ePos.x; exitZone.y = ePos.y;
+
+        seekers = [];
+        for(let i=0; i< (difficulty === 'hard' ? 3 : 4); i++) {
+            let sPos = getRandomSafePosition(25);
+            seekers.push({ x: sPos.x, y: sPos.y, size: 25, speed: 2.8, state: 'roam', vx: Math.random()>0.5?1:-1, vy: Math.random()>0.5?1:-1, lastSeen: null });
+        }
     }
 
     function checkWallCollision(newX, newY, objSize) {
@@ -172,37 +260,51 @@
     }
 
     function hasLineOfSight(x1, y1, x2, y2) {
-        let steps = 40; 
+        let steps = 30; 
         for (let i = 0; i <= steps; i++) {
             let cx = x1 + (x2 - x1) * (i / steps);
             let cy = y1 + (y2 - y1) * (i / steps);
-            for (let w of walls) {
-                if (cx > w.x && cx < w.x + w.w && cy > w.y && cy < w.y + w.h) return false;
-            }
+            for (let w of walls) { if (cx > w.x && cx < w.x + w.w && cy > w.y && cy < w.y + w.h) return false; }
         }
         return true; 
+    }
+
+    function attemptDropOrb() {
+        if (orbsToDrop > 0) {
+            orbsToDrop--;
+            document.getElementById('escape-count').innerText = orbsToDrop;
+            if(orbsToDrop <= 0) endGame(true);
+        }
     }
 
     function update() {
         if (!gameRunning) return;
 
-        // Player Inputs & Sprinting Logic
-        let dx = 0; let dy = 0;
-        let isMoving = false;
+        if (gamePhase === 'escaping') {
+            escapeTimeLeft -= 1/60; // Assuming 60fps
+            document.getElementById('escape-timer').innerText = Math.max(0, escapeTimeLeft).toFixed(1);
+            if (escapeTimeLeft <= 0) {
+                // Failed escape
+                alert("You ran out of time! The darkness consumed your orbs.");
+                resetAfterFailedEscape();
+            }
+            return; // Freeze movement while escaping
+        }
 
+        // --- Player Movement & Fixed Sprint ---
+        let dx = 0; let dy = 0; let isMoving = false;
         if (keys['w'] || keys['arrowup']) { dy -= 1; isMoving = true; }
         if (keys['s'] || keys['arrowdown']) { dy += 1; isMoving = true; }
         if (keys['a'] || keys['arrowleft']) { dx -= 1; isMoving = true; }
         if (keys['d'] || keys['arrowright']) { dx += 1; isMoving = true; }
 
-        let currentSpeed = player.baseSpeed;
-        if (keys['shift'] && isMoving && stamina > 0) {
-            currentSpeed = player.sprintSpeed;
-            stamina = Math.max(0, stamina - 1.5); // Drain stamina
+        let isSprinting = keys['shift'] && isMoving && stamina > 0;
+        let currentSpeed = isSprinting ? player.sprintSpeed : player.baseSpeed;
+        
+        if (isSprinting) {
+            stamina = Math.max(0, stamina - 1.2);
         } else {
-            // Regen stamina: faster if standing still
-            let regenRate = isMoving ? 0.3 : 1.0;
-            stamina = Math.min(100, stamina + regenRate);
+            stamina = Math.min(100, stamina + (isMoving ? 0.3 : 1.0));
         }
         document.getElementById('stamina-bar').style.width = stamina + '%';
 
@@ -214,55 +316,65 @@
         camera.x = Math.max(0, Math.min(worldWidth - camera.w, player.x - camera.w / 2));
         camera.y = Math.max(0, Math.min(worldHeight - camera.h, player.y - camera.h / 2));
 
-        // Quest / Core Collection
-        cores.forEach((core, index) => {
-            if (!core.collected) {
-                let dist = Math.hypot((player.x + player.size/2) - (core.x + 10), (player.y + player.size/2) - (core.y + 10));
-                if (dist < 25) {
-                    core.collected = true;
-                    coresCollected++;
-                    document.getElementById('quest-tracker').innerText = coresCollected + '/3';
-                    if (coresCollected >= 3) endGame(true); // Win the game!
+        // Core Collection
+        cores.forEach(core => {
+            if (!core.collected && Math.hypot((player.x + player.size/2) - (core.x + 10), (player.y + player.size/2) - (core.y + 10)) < 25) {
+                core.collected = true; coresCollected++;
+                document.getElementById('quest-tracker').innerText = coresCollected + '/' + requiredCores;
+                if (coresCollected >= requiredCores && !exitZone.active) {
+                    exitZone.active = true;
                 }
             }
         });
 
-        // Seeker Logic
+        // Enter Exit Zone Logic
+        if (exitZone.active && 
+            player.x > exitZone.x && player.x < exitZone.x + exitZone.w &&
+            player.y > exitZone.y && player.y < exitZone.y + exitZone.h) {
+            
+            gamePhase = 'escaping';
+            orbsToDrop = coresCollected;
+            escapeTimeLeft = 3.0;
+            document.getElementById('escape-ui').classList.remove('hidden');
+            document.getElementById('escape-count').innerText = orbsToDrop;
+        }
+
+        // Improved AI Logic (Better Wall Sliding)
         seekers.forEach(seeker => {
             let targetX, targetY;
             if (difficulty === 'hard') {
                 seeker.state = 'chase'; targetX = player.x; targetY = player.y;
             } else {
                 let canSee = hasLineOfSight(seeker.x + seeker.size/2, seeker.y + seeker.size/2, player.x + player.size/2, player.y + player.size/2);
-                if (canSee) {
-                    seeker.state = 'chase'; seeker.lastSeen = { x: player.x, y: player.y };
-                    targetX = player.x; targetY = player.y;
-                } else if (seeker.lastSeen) {
+                if (canSee) { seeker.state = 'chase'; seeker.lastSeen = { x: player.x, y: player.y }; targetX = player.x; targetY = player.y; }
+                else if (seeker.lastSeen) {
                     seeker.state = 'investigate'; targetX = seeker.lastSeen.x; targetY = seeker.lastSeen.y;
-                    if (Math.abs(seeker.x - targetX) < 5 && Math.abs(seeker.y - targetY) < 5) {
-                        seeker.lastSeen = null; seeker.state = 'roam';
-                    }
-                } else {
-                    seeker.state = 'roam';
-                }
+                    if (Math.hypot(seeker.x - targetX, seeker.y - targetY) < 10) { seeker.lastSeen = null; seeker.state = 'roam'; }
+                } else { seeker.state = 'roam'; }
             }
 
             let sdx = 0, sdy = 0;
             if (seeker.state === 'roam') {
-                sdx = seeker.vx * (seeker.speed * 0.5);
-                sdy = seeker.vy * (seeker.speed * 0.5);
-                if (checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.vx *= -1;
-                if (checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.vy *= -1;
-                if (Math.random() < 0.02) { seeker.vx = Math.random() > 0.5 ? 1 : -1; seeker.vy = Math.random() > 0.5 ? 1 : -1; }
+                sdx = seeker.vx * (seeker.speed * 0.5); sdy = seeker.vy * (seeker.speed * 0.5);
+                if (checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) { seeker.vx *= -1; sdx = 0; }
+                if (checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) { seeker.vy *= -1; sdy = 0; }
+                if (Math.random() < 0.01) { seeker.vx = Math.random()>0.5?1:-1; seeker.vy = Math.random()>0.5?1:-1; }
             } else {
                 let angle = Math.atan2(targetY - seeker.y, targetX - seeker.x);
                 sdx = Math.cos(angle) * seeker.speed; sdy = Math.sin(angle) * seeker.speed;
             }
 
-            if (!checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) seeker.x += sdx;
-            if (!checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) seeker.y += sdy;
+            // Slide logic to prevent getting stuck
+            let movedX = false, movedY = false;
+            if (!checkWallCollision(seeker.x + sdx, seeker.y, seeker.size)) { seeker.x += sdx; movedX = true; }
+            if (!checkWallCollision(seeker.x, seeker.y + sdy, seeker.size)) { seeker.y += sdy; movedY = true; }
+            
+            // If Hard AI is completely stuck in a corner, wiggle it out
+            if (!movedX && !movedY && seeker.state === 'chase') {
+                seeker.x += (Math.random() > 0.5 ? 2 : -2);
+                seeker.y += (Math.random() > 0.5 ? 2 : -2);
+            }
 
-            // Caught
             if (Math.hypot(player.x - seeker.x, player.y - seeker.y) < (player.size/2 + seeker.size/2)) endGame(false);
         });
 
@@ -270,12 +382,34 @@
         document.getElementById('timer').innerText = surviveTime;
     }
 
+    function resetAfterFailedEscape() {
+        gamePhase = 'playing';
+        document.getElementById('escape-ui').classList.add('hidden');
+        
+        // Reset to 1 orb, move player safely away
+        coresCollected = 1;
+        document.getElementById('quest-tracker').innerText = coresCollected + '/' + requiredCores;
+        
+        // Respawn remaining orbs randomly
+        cores.forEach((core, i) => {
+            if(i < coresCollected) core.collected = true;
+            else {
+                let pos = getRandomSafePosition(20);
+                core.x = pos.x; core.y = pos.y;
+                core.collected = false;
+            }
+        });
+        
+        exitZone.active = false;
+        let pSpawn = getRandomSafePosition(player.size);
+        player.x = pSpawn.x; player.y = pSpawn.y;
+    }
+
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Map Detail: Tiled Floor Dots
-        ctx.fillStyle = '#0a0a12';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Floor
+        ctx.fillStyle = '#0a0a12'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#1c1c2e';
         for(let x = 50 - (camera.x % 50); x < canvas.width; x += 50) {
             for(let y = 50 - (camera.y % 50); y < canvas.height; y += 50) {
@@ -283,55 +417,52 @@
             }
         }
 
-        // World Borders
         ctx.strokeStyle = '#333'; ctx.lineWidth = 5;
         ctx.strokeRect(0 - camera.x, 0 - camera.y, worldWidth, worldHeight);
 
-        // Draw Walls with detail
+        // Exit Zone
+        if (exitZone.active) {
+            ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+            ctx.fillRect(exitZone.x - camera.x, exitZone.y - camera.y, exitZone.w, exitZone.h);
+            ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 3;
+            ctx.strokeRect(exitZone.x - camera.x, exitZone.y - camera.y, exitZone.w, exitZone.h);
+            ctx.fillStyle = '#fff'; ctx.font = "20px Arial";
+            ctx.fillText("EXIT", exitZone.x - camera.x + 25, exitZone.y - camera.y + 55);
+        }
+
+        // Walls
         walls.forEach(w => {
-            ctx.fillStyle = '#0f3460';
-            ctx.fillRect(w.x - camera.x, w.y - camera.y, w.w, w.h);
-            ctx.strokeStyle = '#4338ca'; // Neon trim
-            ctx.lineWidth = 2;
-            ctx.strokeRect(w.x - camera.x, w.y - camera.y, w.w, w.h);
+            ctx.fillStyle = '#0f3460'; ctx.fillRect(w.x - camera.x, w.y - camera.y, w.w, w.h);
+            ctx.strokeStyle = '#4338ca'; ctx.lineWidth = 2; ctx.strokeRect(w.x - camera.x, w.y - camera.y, w.w, w.h);
         });
 
-        // Draw Cores (Quests)
+        // Cores
         cores.forEach(core => {
             if (!core.collected) {
-                ctx.shadowBlur = 15; ctx.shadowColor = '#4ade80';
-                ctx.fillStyle = '#4ade80';
-                ctx.fillRect(core.x - camera.x, core.y - camera.y, 20, 20);
-                ctx.shadowBlur = 0; // reset shadow
+                ctx.shadowBlur = 15; ctx.shadowColor = '#4ade80'; ctx.fillStyle = '#4ade80';
+                ctx.fillRect(core.x - camera.x, core.y - camera.y, 20, 20); ctx.shadowBlur = 0;
             }
         });
 
-        // Draw Player
-        ctx.shadowBlur = 10; ctx.shadowColor = player.color;
-        ctx.fillStyle = player.color;
-        ctx.fillRect(player.x - camera.x, player.y - camera.y, player.size, player.size);
-        ctx.shadowBlur = 0;
+        // Player
+        ctx.shadowBlur = 10; ctx.shadowColor = player.color; ctx.fillStyle = player.color;
+        ctx.fillRect(player.x - camera.x, player.y - camera.y, player.size, player.size); ctx.shadowBlur = 0;
 
-        // Draw Seekers
+        // Seekers
         seekers.forEach(seeker => {
             ctx.fillStyle = seeker.state === 'chase' ? '#ff1e56' : (seeker.state === 'investigate' ? '#ff9a00' : '#8e3251');
             ctx.fillRect(seeker.x - camera.x, seeker.y - camera.y, seeker.size, seeker.size);
-            ctx.fillStyle = 'white';
-            ctx.fillRect(seeker.x - camera.x + 5, seeker.y - camera.y + 5, 5, 5);
+            ctx.fillStyle = 'white'; ctx.fillRect(seeker.x - camera.x + 5, seeker.y - camera.y + 5, 5, 5);
         });
 
-        // The Darkness (Fog of War Overlay)
+        // The Darkness Overlay
         let cx = player.x - camera.x + player.size / 2;
         let cy = player.y - camera.y + player.size / 2;
-        
-        // Create a radial gradient from the player outward
-        let gradient = ctx.createRadialGradient(cx, cy, 50, cx, cy, 350);
-        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');     // Clear near player
-        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.6)'); // Dim further away
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.98)');  // Pitch black at edges
-        
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let gradient = ctx.createRadialGradient(cx, cy, 60, cx, cy, 380);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.7)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.98)');
+        ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
     function loop() {
@@ -344,32 +475,25 @@
         window.focus(); 
         document.getElementById('start-menu').classList.add('hidden');
         document.getElementById('ui-layer').classList.remove('hidden');
+        document.getElementById('escape-ui').classList.add('hidden');
         
         let mapData = maps[document.getElementById('map-select').value];
-        walls = mapData.walls;
-        
-        // Reset Quests
-        cores = JSON.parse(JSON.stringify(mapData.cores)); // Deep copy to reset states
-        coresCollected = 0;
-        document.getElementById('quest-tracker').innerText = '0/3';
-        
         difficulty = document.getElementById('diff-select').value;
         
-        // Safe spawn from map data
-        player.x = mapData.spawn.x; 
-        player.y = mapData.spawn.y;
-        stamina = 100;
+        spawnGameEntities(mapData);
         
-        spawnSeekers();
-        startTime = Date.now();
-        gameRunning = true;
-        loop();
+        coresCollected = 0;
+        document.getElementById('quest-tracker').innerText = '0/' + requiredCores;
+        stamina = 100; gamePhase = 'playing';
+        
+        startTime = Date.now(); gameRunning = true; loop();
     }
 
     function endGame(isWin) {
         gameRunning = false;
         cancelAnimationFrame(animationId);
         document.getElementById('ui-layer').classList.add('hidden');
+        document.getElementById('escape-ui').classList.add('hidden');
         
         let endMenu = document.getElementById('game-end-menu');
         let endTitle = document.getElementById('end-title');
@@ -377,21 +501,31 @@
         
         endMenu.classList.remove('hidden');
         if (isWin) {
-            endTitle.innerText = "ESCAPED!";
-            endTitle.style.color = "#4ade80";
-            endDesc.innerText = `You collected all cores in ${surviveTime} seconds!`;
+            endTitle.innerText = "ESCAPED!"; endTitle.style.color = "#4ade80";
+            endDesc.innerText = `You escaped and banked ${coresCollected} Orbs!`;
+            savedData.bank += coresCollected; saveGame();
         } else {
-            endTitle.innerText = "CAUGHT!";
-            endTitle.style.color = "#e94560";
-            endDesc.innerText = `You survived for ${surviveTime} seconds.`;
+            endTitle.innerText = "CAUGHT!"; endTitle.style.color = "#e94560";
+            endDesc.innerText = `You survived for ${surviveTime} seconds and lost your orbs.`;
         }
     }
 
     function showStartMenu() {
         document.getElementById('game-end-menu').classList.add('hidden');
+        document.getElementById('shop-menu').classList.add('hidden');
         document.getElementById('start-menu').classList.remove('hidden');
+        updateBankDisplays();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
+
+    function showShop() {
+        document.getElementById('start-menu').classList.add('hidden');
+        document.getElementById('shop-menu').classList.remove('hidden');
+        updateBankDisplays();
+    }
+
+    // Initialize UI on load
+    updateBankDisplays();
 </script>
 
 </body>

@@ -3,38 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IN THE DARK: Pro Edition</title>
+    <title>IN THE DARK: The Hunt Update</title>
     <style>
-        :root { --red: #e94560; --blue: #00d2ff; --purple: #a855f7; --gold: #fbbf24; --bg: #050508; }
-        body { margin: 0; padding: 0; background-color: var(--bg); color: white; font-family: 'Inter', 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        #game-container { position: relative; width: 800px; height: 600px; background-color: #000; overflow: hidden; border: 1px solid #222; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        :root { --red: #e94560; --blue: #00d2ff; --purple: #a855f7; --gold: #fbbf24; --bg: #050508; --panel: #11111a; }
+        body { margin: 0; padding: 0; background-color: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-container { position: relative; width: 800px; height: 600px; background-color: #000; overflow: hidden; border: 2px solid #222; border-radius: 12px; }
         canvas { display: block; }
         
         /* UI Panels */
-        .panel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 10, 0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; transition: 0.3s; }
-        .hidden { opacity: 0; pointer-events: none; display: none; }
+        .panel { position: absolute; inset: 0; background: rgba(5, 5, 10, 0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+        .hidden { display: none !important; }
         
-        h1 { font-size: 3rem; margin: 0; color: var(--red); text-transform: uppercase; letter-spacing: 4px; text-shadow: 0 0 20px rgba(233, 69, 96, 0.3); }
-        .subtitle { font-size: 0.9rem; color: #666; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; }
+        h1 { font-size: 3.5rem; margin: 0; color: var(--red); text-transform: uppercase; letter-spacing: 5px; text-shadow: 0 0 15px rgba(233, 69, 96, 0.4); }
+        .desc-box { font-size: 0.85rem; color: #888; margin: 10px 0 25px 0; text-align: center; max-width: 400px; min-height: 40px; background: #161625; padding: 10px; border-radius: 8px; border: 1px solid #333; }
         
-        .row { display: flex; gap: 10px; margin-bottom: 15px; }
-        .bank-badge { background: #1a1a2e; padding: 8px 20px; border-radius: 20px; border: 1px solid #333; color: var(--gold); font-weight: bold; margin-bottom: 20px; }
+        .row { display: flex; gap: 12px; margin-bottom: 15px; }
+        .bank-badge { background: #1a1a2e; padding: 10px 25px; border-radius: 30px; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; margin-bottom: 20px; font-size: 1.2rem; }
         
-        /* Interactive Elements */
-        select, button { padding: 12px 24px; font-size: 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; font-family: inherit; }
-        select { background-color: #16213e; color: white; border: 1px solid #222; }
-        button { background-color: var(--red); color: white; }
-        button:hover { transform: translateY(-2px); filter: brightness(1.2); }
-        button:disabled { background-color: #333; cursor: not-allowed; transform: none; }
-        .btn-sec { background-color: #16213e; border: 1px solid #333; }
+        /* Buttons & Inputs */
+        select, button { padding: 14px 24px; font-size: 1rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; background: #16213e; color: white; }
+        button { background: var(--red); }
+        button:hover { transform: scale(1.05); filter: brightness(1.2); }
+        button:disabled { background: #333; cursor: not-allowed; transform: none; }
+        .btn-shop { background: #1f1f35; border: 1px solid #444; }
         
-        /* In-Game UI */
+        /* HUD */
         #hud { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; z-index: 10; }
-        .stat-box { background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 8px; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); }
-        #stamina-bar { width: 150px; height: 6px; background: #222; border-radius: 3px; margin-top: 8px; overflow: hidden; }
-        #stamina-fill { width: 100%; height: 100%; background: var(--gold); transition: width 0.1s; }
+        .stat-box { background: rgba(0,0,0,0.7); padding: 12px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        #stamina-bar { width: 140px; height: 8px; background: #222; border-radius: 4px; margin-top: 8px; overflow: hidden; border: 1px solid #444; }
+        #stamina-fill { width: 100%; height: 100%; background: var(--gold); }
 
-        #escape-prompt { position: absolute; top: 40%; left: 50%; transform: translateX(-50%); text-align: center; z-index: 15; background: rgba(233, 69, 96, 0.9); padding: 20px; border-radius: 12px; }
+        /* Notification Toast */
+        #toast { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #4ade80; color: black; padding: 12px 30px; border-radius: 50px; font-weight: bold; opacity: 0; transition: 0.5s; z-index: 100; }
+        .show-toast { opacity: 1 !important; transform: translateX(-50%) translateY(-20px) !important; }
     </style>
 </head>
 <body>
@@ -42,6 +43,8 @@
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     
+    <div id="toast">ITEM UNLOCKED!</div>
+
     <div id="hud" class="hidden">
         <div class="stat-box">
             <div id="timer-text">TIME: 0.0s</div>
@@ -49,66 +52,61 @@
         </div>
         <div class="stat-box" style="text-align: right;">
             <div id="orb-text" style="color: var(--blue)">ORBS: 0/3</div>
-            <div id="bank-text" style="color: var(--gold); font-size: 0.8rem;">BANK: 0</div>
+            <div id="bank-hud" style="color: var(--gold); font-size: 0.8rem;">BANK: 0</div>
         </div>
-    </div>
-
-    <div id="escape-prompt" class="hidden">
-        <h2 style="margin:0">ESCAPE ZONE!</h2>
-        <p>MASH <b style="font-size: 1.5rem;">'E'</b> TO DROP ORBS</p>
-        <div id="escape-timer" style="font-size: 2rem; font-weight: 800;">3.0</div>
     </div>
 
     <div id="menu-main" class="panel">
         <h1>IN THE DARK</h1>
-        <div class="subtitle">Stealth Survival Horror</div>
-        <div class="bank-badge">ORBS: <span id="display-bank">0</span></div>
+        <div class="bank-badge">BANK: <span id="display-bank">0</span></div>
         
         <div class="row">
-            <select id="select-role">
+            <select id="select-role" onchange="updateDiffDesc()">
                 <option value="hider">Role: Hider</option>
                 <option value="seeker" id="opt-seeker" disabled>Role: Seeker (Locked)</option>
+            </select>
+            <select id="select-diff" onchange="updateDiffDesc()">
+                <option value="normal">Normal Difficulty</option>
+                <option value="hard">Hard Difficulty</option>
             </select>
             <select id="select-map">
                 <option value="0">The Cross</option>
                 <option value="1">The Maze</option>
                 <option value="2">Neighborhood</option>
-                <option value="3" id="map-3-opt" disabled>Forest (15 Orbs)</option>
-                <option value="4" id="map-4-opt" disabled>Dungeon (30 Orbs)</option>
-            </select>
-            <select id="select-diff">
-                <option value="normal">Normal AI</option>
-                <option value="hard">Hard AI (Nightmare)</option>
+                <option value="3" id="map-3-opt" disabled>Forest (Locked)</option>
+                <option value="4" id="map-4-opt" disabled>Dungeon (Locked)</option>
             </select>
         </div>
+
+        <div class="desc-box" id="diff-desc">Choose a role and difficulty.</div>
         
         <div class="row">
-            <button onclick="startGame()">START GAME</button>
-            <button class="btn-sec" onclick="openPanel('menu-shop')">SHOP</button>
+            <button onclick="startGame()">ENTER THE DARK</button>
+            <button class="btn-shop" onclick="openPanel('menu-shop')">THE SHOP</button>
         </div>
     </div>
 
     <div id="menu-shop" class="panel hidden">
-        <h1>SHOP</h1>
-        <div class="bank-badge" style="margin-top:10px">BANK: <span id="shop-bank">0</span></div>
+        <h1>THE SHOP</h1>
+        <div class="bank-badge">BANK: <span id="shop-bank">0</span></div>
         
-        <div class="row" style="flex-direction: column; width: 300px;">
+        <div class="row" style="flex-direction: column; width: 350px;">
             <button id="buy-seeker" onclick="buyItem('seeker', 50)">Unlock Seeker Mode (50 Orbs)</button>
             <button id="buy-map-3" onclick="buyItem('map3', 15)">Unlock Forest Map (15 Orbs)</button>
             <button id="buy-map-4" onclick="buyItem('map4', 30)">Unlock Dungeon Map (30 Orbs)</button>
-            <div class="row" style="margin-top:10px">
-                <button class="btn-sec" style="color:var(--gold)" onclick="buyItem('colorGold', 10)">Gold Skin (10)</button>
-                <button class="btn-sec" style="color:var(--purple)" onclick="buyItem('colorPurple', 15)">Purple Skin (15)</button>
+            <div class="row" style="margin-top:10px; width: 100%;">
+                <button class="btn-shop" style="flex:1; color:var(--gold)" onclick="buyItem('colorGold', 10)">Gold Skin (10)</button>
+                <button class="btn-shop" style="flex:1; color:var(--purple)" onclick="buyItem('colorPurple', 15)">Purple Skin (15)</button>
             </div>
         </div>
-        <button class="btn-sec" onclick="openPanel('menu-main')" style="margin-top: 20px;">BACK</button>
+        <button class="btn-shop" onclick="openPanel('menu-main')" style="margin-top: 20px; width: 350px;">RETURN</button>
     </div>
 
     <div id="menu-over" class="panel hidden">
         <h1 id="over-title">CAUGHT</h1>
-        <p id="over-msg">You didn't survive.</p>
-        <div class="bank-badge">REWARD: +<span id="reward-count">0</span> Orbs</div>
-        <button onclick="openPanel('menu-main')">RETURN TO MENU</button>
+        <div id="over-msg" style="margin: 10px 0 20px 0; color: #888;">You didn't survive.</div>
+        <div class="bank-badge">REWARD: +<span id="reward-count">0</span></div>
+        <button onclick="openPanel('menu-main')" style="width: 250px;">PLAY AGAIN</button>
     </div>
 </div>
 
@@ -116,131 +114,136 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // --- Save System & Initial Grant ---
-    let storage = JSON.parse(localStorage.getItem('itd_save')) || {
-        bank: 50, // STARTING BONUS AS REQUESTED!
+    // --- Save System ---
+    let storage = JSON.parse(localStorage.getItem('itd_save_v2')) || {
+        bank: 50, // Starting Bonus
         unlocked: ['map0', 'map1', 'map2'],
         color: '#00d2ff'
     };
-    function save() { localStorage.setItem('itd_save', JSON.stringify(storage)); updateUI(); }
 
-    // --- Game State ---
-    let state = {
-        running: false,
-        phase: 'play',
-        role: 'hider',
-        map: 0,
-        diff: 'normal',
-        time: 0,
-        stamina: 100,
-        orbs: 0,
-        totalOrbs: 3,
-        escapeT: 3.0,
-        world: { w: 1600, h: 1200 },
-        cam: { x: 0, y: 0 }
-    };
+    function save() { 
+        localStorage.setItem('itd_save_v2', JSON.stringify(storage)); 
+        updateUI(); 
+    }
 
+    function showNotify(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('show-toast');
+        setTimeout(() => t.classList.remove('show-toast'), 2500);
+    }
+
+    // --- Game Logic ---
+    let state = { running: false, phase: 'play', role: 'hider', map: 0, diff: 'normal', time: 0, stamina: 100, orbs: 0, totalOrbs: 3, world: {w:1600, h:1200}, cam: {x:0, y:0} };
     const keys = {};
     window.onkeydown = e => keys[e.key.toLowerCase()] = true;
     window.onkeyup = e => keys[e.key.toLowerCase()] = false;
 
-    const player = { x: 0, y: 0, size: 20, speed: 2.2, sprint: 5.0 };
-    let entities = []; // Seekers or Hiders
+    const player = { x: 0, y: 0, size: 20, speed: 2.5, sprint: 5.5 };
+    let entities = []; // Hunters or Prey
+    let allies = [];   // Seeker buddies
     let walls = [];
     let items = [];
-    let exit = { x: 0, y: 0, active: false };
 
-    // --- Maps ---
     const mapData = [
         { name: "Cross", walls: [{x:700,y:200,w:200,h:800},{x:300,y:500,w:1000,h:200}], orbs: 3 },
         { name: "Maze", walls: [{x:200,y:200,w:1200,h:40},{x:200,y:200,w:40,h:600},{x:500,y:500,w:900,h:40},{x:200,y:960,w:1200,h:40},{x:1360,y:500,w:40,h:500}], orbs: 4 },
-        { name: "Neighborhood", walls: [{x:100,y:100,w:250,h:250, house:true},{x:1000,y:100,w:250,h:250, house:true},{x:500,y:700,w:400,h:300, house:true}], orbs: 6 },
-        { name: "Forest", walls: [{x:300,y:300,w:50,h:50},{x:800,y:200,w:40,h:40},{x:1200,y:800,w:60,h:60},{x:400,y:900,w:50,h:50}], orbs: 8 },
-        { name: "Dungeon", walls: [{x:0,y:400,w:600,h:40},{x:1000,y:400,w:600,h:40},{x:700,y:0,w:40,h:400},{x:700,y:800,w:40,h:400}], orbs: 10 }
+        { name: "Neighborhood", walls: [{x:100,y:100,w:300,h:300},{x:1000,y:100,w:300,h:300},{x:500,y:700,w:400,h:400}], orbs: 6 },
+        { name: "Forest", walls: [{x:200,y:200,w:100,h:100},{x:1000,y:800,w:100,h:100}], orbs: 8 },
+        { name: "Dungeon", walls: [{x:0,y:400,w:700,h:50},{x:900,y:400,w:700,h:50}], orbs: 10 }
     ];
 
     function updateUI() {
         document.getElementById('display-bank').innerText = storage.bank;
         document.getElementById('shop-bank').innerText = storage.bank;
-        document.getElementById('bank-text').innerText = "BANK: " + storage.bank;
+        document.getElementById('bank-hud').innerText = "BANK: " + storage.bank;
 
-        // Seeker Mode Unlock
         if(storage.unlocked.includes('seeker')) {
             document.getElementById('opt-seeker').disabled = false;
             document.getElementById('opt-seeker').innerText = "Role: Seeker";
-            document.getElementById('buy-seeker').innerText = "Seeker Mode Unlocked";
             document.getElementById('buy-seeker').disabled = true;
+            document.getElementById('buy-seeker').innerText = "Seeker Mode Owned";
         }
-        // Map Unlocks
-        if(storage.unlocked.includes('map3')) { document.getElementById('map-3-opt').disabled = false; document.getElementById('map-3-opt').innerText = "Forest"; }
-        if(storage.unlocked.includes('map4')) { document.getElementById('map-4-opt').disabled = false; document.getElementById('map-4-opt').innerText = "Dungeon"; }
+        if(storage.unlocked.includes('map3')) { document.getElementById('map-3-opt').disabled = false; document.getElementById('map-3-opt').innerText = "Forest Map"; }
+        if(storage.unlocked.includes('map4')) { document.getElementById('map-4-opt').disabled = false; document.getElementById('map-4-opt').innerText = "Dungeon Map"; }
+        updateDiffDesc();
+    }
+
+    function updateDiffDesc() {
+        const role = document.getElementById('select-role').value;
+        const diff = document.getElementById('select-diff').value;
+        const dBox = document.getElementById('diff-desc');
+        
+        if(role === 'seeker') {
+            if(diff === 'normal') dBox.innerText = "Normal: Buddies with you and hiders are easy to find.";
+            else dBox.innerText = "Hard: No buddies and hiders know where to hide and are harder to find.";
+        } else {
+            dBox.innerText = diff === 'normal' ? "Normal Hider: Stay away from the 4 Seekers." : "Hard Hider: The Seekers always know where you are!";
+        }
     }
 
     function buyItem(id, cost) {
         if(storage.bank >= cost) {
             storage.bank -= cost;
-            if(id === 'colorGold') storage.color = '#fbbf24';
-            else if(id === 'colorPurple') storage.color = '#a855f7';
-            else storage.unlocked.push(id);
+            if(id === 'colorGold') { storage.color = '#fbbf24'; showNotify("Gold Skin Equipped!"); }
+            else if(id === 'colorPurple') { storage.color = '#a855f7'; showNotify("Purple Skin Equipped!"); }
+            else { storage.unlocked.push(id); showNotify("Unlock Successful!"); }
             save();
-            alert("Unlocked!");
-        } else { alert("Not enough orbs!"); }
+        } else { showNotify("Not enough orbs!"); }
     }
 
     function openPanel(id) {
         document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
-        document.getElementById(id).classList.remove('hidden');
+        if(id !== 'none') document.getElementById(id).classList.remove('hidden');
     }
 
     function collision(x, y, s) {
         if (x < 0 || x + s > state.world.w || y < 0 || y + s > state.world.h) return true;
-        for (let w of walls) {
-            if (x < w.x + w.w && x + s > w.x && y < w.y + w.h && y + s > w.y) return true;
-        }
+        for (let w of walls) { if (x < w.x + w.w && x + s > w.x && y < w.y + w.h && y + s > w.y) return true; }
         return false;
     }
 
     function startGame() {
         state.role = document.getElementById('select-role').value;
-        state.map = parseInt(document.getElementById('select-map').value);
         state.diff = document.getElementById('select-diff').value;
+        state.map = parseInt(document.getElementById('select-map').value);
         
         walls = mapData[state.map].walls;
         state.totalOrbs = mapData[state.map].orbs;
         state.orbs = 0;
         state.time = 0;
-        state.phase = 'play';
         state.stamina = 100;
-        exit.active = false;
         
         // Spawn Player
-        player.x = 50; player.y = 50;
-        while(collision(player.x, player.y, player.size)) { player.x += 30; player.y += 30; }
+        player.x = 100; player.y = 100;
 
-        // Spawn Items
+        // Items for Hider Mode
         items = [];
-        for(let i=0; i<state.totalOrbs; i++) {
-            let rx = Math.random()*(state.world.w-100)+50;
-            let ry = Math.random()*(state.world.h-100)+50;
-            if(!collision(rx, ry, 20)) items.push({x:rx, y:ry, active:true}); else i--;
+        if(state.role === 'hider') {
+            for(let i=0; i<state.totalOrbs; i++) {
+                let rx = Math.random()*1500+50, ry = Math.random()*1100+50;
+                if(!collision(rx, ry, 20)) items.push({x:rx, y:ry, active:true}); else i--;
+            }
         }
 
-        // Spawn AI Entities
+        // Entities
         entities = [];
+        allies = [];
         let count = state.role === 'hider' ? 4 : 3;
         for(let i=0; i<count; i++) {
-            let rx = 1400, ry = 1000;
-            entities.push({
-                x: rx, y: ry, size: 25, 
-                vx: Math.random()*2-1, vy: Math.random()*2-1,
-                state: 'roam', speed: state.role === 'hider' ? 2.8 : 3.5
-            });
+            entities.push({ x: 1400, y: 1000, size: 25, vx: Math.random()*2-1, vy: Math.random()*2-1, speed: state.role==='hider' ? 2.8 : 3.2 });
+        }
+
+        // Add Buddies in Normal Seeker mode
+        if(state.role === 'seeker' && state.diff === 'normal') {
+            allies.push({ x: 150, y: 150, size: 20, vx: 0, vy: 0, speed: 3 });
+            allies.push({ x: 150, y: 200, size: 20, vx: 0, vy: 0, speed: 3 });
         }
 
         openPanel('none');
         document.getElementById('hud').classList.remove('hidden');
         state.running = true;
-        requestAnimationFrame(loop);
+        loop();
     }
 
     function loop() {
@@ -251,52 +254,39 @@
     }
 
     function update() {
-        if(state.phase === 'escape') {
-            state.escapeT -= 1/60;
-            document.getElementById('escape-timer').innerText = state.escapeT.toFixed(1);
-            if(keys['e']) {
-                state.orbs--;
-                delete keys['e']; // Debounce
-                if(state.orbs <= 0) endGame(true);
-            }
-            if(state.escapeT <= 0) { state.orbs = 1; state.phase = 'play'; document.getElementById('escape-prompt').classList.add('hidden'); }
-            return;
-        }
-
-        // Player Movement
+        // Player
         let mx = 0, my = 0;
         if(keys['w']) my -= 1; if(keys['s']) my += 1;
         if(keys['a']) mx -= 1; if(keys['d']) mx += 1;
 
         let sprint = keys['shift'] && state.stamina > 0 && (mx!==0 || my!==0);
         let speed = sprint ? player.sprint : player.speed;
-        if(sprint) state.stamina -= 1; else state.stamina = Math.min(100, state.stamina + 0.5);
+        if(sprint) state.stamina -= 1.2; else state.stamina = Math.min(100, state.stamina + 0.6);
         
         if(!collision(player.x + mx*speed, player.y, player.size)) player.x += mx*speed;
         if(!collision(player.x, player.y + my*speed, player.size)) player.y += my*speed;
 
-        // Camera
         state.cam.x = player.x - 400; state.cam.y = player.y - 300;
         state.cam.x = Math.max(0, Math.min(state.world.w-800, state.cam.x));
         state.cam.y = Math.max(0, Math.min(state.world.h-600, state.cam.y));
 
-        // Interaction
         if(state.role === 'hider') {
-            items.forEach(it => {
-                if(it.active && Math.hypot(player.x-it.x, player.y-it.y) < 30) { it.active = false; state.orbs++; }
-            });
-            if(state.orbs >= state.totalOrbs && !exit.active) { 
-                exit.active = true; exit.x = Math.random()*1400; exit.y = Math.random()*1000;
-            }
-            if(exit.active && Math.hypot(player.x-exit.x, player.y-exit.y) < 50) {
-                state.phase = 'escape'; state.escapeT = 3.0; document.getElementById('escape-prompt').classList.remove('hidden');
-            }
+            items.forEach(it => { if(it.active && Math.hypot(player.x-it.x, player.y-it.y) < 30) { it.active = false; state.orbs++; if(state.orbs >= state.totalOrbs) endGame(true); } });
         }
 
-        // AI Logic
-        entities.forEach(en => {
+        // Allies (Buddies)
+        allies.forEach(al => {
+            let target = entities[0]; // Simple AI: target the first hider
+            if(target) {
+                let ang = Math.atan2(target.y-al.y, target.x-al.x);
+                al.vx = Math.cos(ang); al.vy = Math.sin(ang);
+                al.x += al.vx * al.speed; al.y += al.vy * al.speed;
+            }
+        });
+
+        // Entities AI
+        entities.forEach((en, idx) => {
             if(state.role === 'hider') {
-                // Seekers hunting player
                 let dist = Math.hypot(en.x-player.x, en.y-player.y);
                 if(state.diff === 'hard' || dist < 300) {
                     let ang = Math.atan2(player.y-en.y, player.x-en.x);
@@ -304,17 +294,16 @@
                 }
                 if(dist < 20) endGame(false);
             } else {
-                // AI Hiders running from player
+                // Seeker Mode: Hiders flee
                 let dist = Math.hypot(en.x-player.x, en.y-player.y);
-                if(dist < 200) {
+                if(dist < 200 || state.diff === 'hard') {
                     let ang = Math.atan2(en.y-player.y, en.x-player.x);
                     en.vx = Math.cos(ang); en.vy = Math.sin(ang);
                 }
-                if(dist < 25) { entities.splice(entities.indexOf(en), 1); state.orbs++; if(state.orbs >= 3) endGame(true); }
+                if(dist < 25) { entities.splice(idx, 1); state.orbs++; if(state.orbs >= 3) endGame(true); }
             }
-            
-            if(!collision(en.x + en.vx*en.speed, en.y, en.size)) en.x += en.vx*en.speed; else en.vx *= -1;
-            if(!collision(en.x, en.y + en.vy*en.speed, en.size)) en.y += en.vy*en.speed; else en.vy *= -1;
+            if(!collision(en.x + en.vx*en.speed, en.y, en.size)) en.x += en.vx*en.speed; else { en.vx *= -1; en.vy *= -1; }
+            if(!collision(en.x, en.y + en.vy*en.speed, en.size)) en.y += en.vy*en.speed;
         });
 
         state.time += 1/60;
@@ -326,64 +315,50 @@
     function draw() {
         ctx.fillStyle = '#050508'; ctx.fillRect(0,0,800,600);
         
-        // Walls
-        ctx.fillStyle = '#16213e';
+        ctx.fillStyle = '#111';
+        for(let i=0; i<state.world.w; i+=100) ctx.fillRect(i-state.cam.x, 0-state.cam.y, 1, state.world.h);
+        for(let i=0; i<state.world.h; i+=100) ctx.fillRect(0-state.cam.x, i-state.cam.y, state.world.w, 1);
+
         walls.forEach(w => {
-            ctx.fillRect(w.x - state.cam.x, w.y - state.cam.y, w.w, w.h);
-            ctx.strokeStyle = '#e94560'; ctx.strokeRect(w.x - state.cam.x, w.y - state.cam.y, w.w, w.h);
+            ctx.fillStyle = '#16213e'; ctx.fillRect(w.x-state.cam.x, w.y-state.cam.y, w.w, w.h);
+            ctx.strokeStyle = varColor('--red'); ctx.strokeRect(w.x-state.cam.x, w.y-state.cam.y, w.w, w.h);
         });
 
-        // Orbs
-        ctx.fillStyle = '#4ade80';
-        items.forEach(it => { if(it.active) ctx.fillRect(it.x - state.cam.x, it.y - state.cam.y, 15, 15); });
-
-        // Exit
-        if(exit.active) { ctx.fillStyle = 'rgba(0,210,255,0.4)'; ctx.fillRect(exit.x-state.cam.x, exit.y-state.cam.y, 100, 100); }
-
-        // Entities
-        entities.forEach(en => {
-            ctx.fillStyle = state.role === 'hider' ? '#e94560' : '#00d2ff';
-            ctx.fillRect(en.x - state.cam.x, en.y - state.cam.y, en.size, en.size);
-        });
-
-        // Player
-        ctx.fillStyle = storage.color;
-        ctx.fillRect(player.x - state.cam.x, player.y - state.cam.y, player.size, player.size);
-
-        // Darkness Mask
-        let grad = ctx.createRadialGradient(400, 300, 50, 400, 300, state.diff === 'hard' ? 250 : 350);
-        grad.addColorStop(0, 'transparent');
-        grad.addColorStop(1, state.diff === 'hard' ? 'rgba(20,0,0,0.95)' : 'black');
-        ctx.fillStyle = grad; ctx.fillRect(0,0,800,600);
-
-        // Hard mode "Pulse"
-        if(state.diff === 'hard') {
-            ctx.fillStyle = `rgba(233, 69, 96, ${Math.sin(Date.now()/500)*0.05 + 0.05})`;
-            ctx.fillRect(0,0,800,600);
+        if(state.role === 'hider') {
+            ctx.fillStyle = '#4ade80'; items.forEach(it => { if(it.active) ctx.fillRect(it.x-state.cam.x, it.y-state.cam.y, 15, 15); });
         }
+
+        entities.forEach(en => {
+            ctx.fillStyle = state.role === 'hider' ? varColor('--red') : varColor('--blue');
+            ctx.fillRect(en.x-state.cam.x, en.y-state.cam.y, en.size, en.size);
+        });
+
+        allies.forEach(al => {
+            ctx.fillStyle = '#5555ff'; ctx.fillRect(al.x-state.cam.x, al.y-state.cam.y, al.size, al.size);
+        });
+
+        ctx.fillStyle = storage.color;
+        ctx.fillRect(player.x-state.cam.x, player.y-state.cam.y, player.size, player.size);
+
+        let g = ctx.createRadialGradient(400, 300, 50, 400, 300, state.diff==='hard'?220:380);
+        g.addColorStop(0, 'transparent'); g.addColorStop(1, state.diff==='hard'?'rgba(15,0,0,0.98)':'black');
+        ctx.fillStyle = g; ctx.fillRect(0,0,800,600);
     }
+
+    function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
     function endGame(win) {
         state.running = false;
         document.getElementById('hud').classList.add('hidden');
-        document.getElementById('escape-prompt').classList.add('hidden');
         openPanel('menu-over');
         
-        let reward = 0;
-        if(win) {
-            reward = state.orbs;
-            if(state.diff === 'hard') reward += 5;
-            if(state.time < 25) reward += 3;
-            storage.bank += reward;
-            save();
-            document.getElementById('over-title').innerText = "ESCAPED";
-            document.getElementById('over-title').style.color = "#4ade80";
-            document.getElementById('over-msg').innerText = `Finished in ${state.time.toFixed(1)}s`;
-        } else {
-            document.getElementById('over-title').innerText = "CAUGHT";
-            document.getElementById('over-title').style.color = "#e94560";
-            document.getElementById('over-msg').innerText = "Better luck next time.";
-        }
+        let reward = win ? (state.orbs + (state.diff==='hard'?5:0) + (state.time<25?3:0)) : 0;
+        storage.bank += reward;
+        save();
+        
+        document.getElementById('over-title').innerText = win ? "MISSION SUCCESS" : "MISSION FAILED";
+        document.getElementById('over-title').style.color = win ? "#4ade80" : "#e94560";
+        document.getElementById('over-msg').innerText = win ? `You extracted with ${state.orbs} orbs!` : "You were caught in the darkness.";
         document.getElementById('reward-count').innerText = reward;
     }
 

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>War with Cubes: Overdrive</title>
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --secondary: #ff0055;
+            --bg: #050508;
+            --panel: rgba(10, 10, 15, 0.9);
+            --text: #e0e0e0;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            user-select: none;
+        }
+
+        canvas { display: block; }
+
+        /* --- UI ELEMENTS --- */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        #ui-layer * { pointer-events: auto; }
+
+        #main-menu {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, #101020 0%, #050508 100%);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 100;
+        }
+
+        .glass-card {
+            background: var(--panel);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            text-align: center;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            letter-spacing: 8px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #00f2ff, #0066ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.5));
+        }
+
+        input[type="number"] {
+            background: #000;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 12px;
+            font-size: 1.2rem;
+            width: 100px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        button {
+            display: block; width: 100%;
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        /* --- HUD --- */
+        #leaderboard {
+            position: absolute;
+            top: 20px; right: 20px;
+            width: 240px;
+            background: var(--panel);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            max-height: 40vh;
+            overflow-y: auto;
+        }
+
+        .lb-entry {
+            display: flex; justify-content: space-between;
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .lb-entry:hover { background: rgba(0, 242, 255, 0.1); }
+
+        #stats-panel {
+            position: absolute;
+            bottom: 20px; left: 20px;
+            width: 320px;
+            background: var(--panel);
+            border: 1px solid var(--primary);
+            border-radius: 15px;
+            padding: 20px;
+            display: none;
+            backdrop-filter: blur(15px);
+        }
+
+        .health-bar { height: 8px; background: #222; width: 100%; border-radius: 4px; overflow: hidden; margin: 10px 0; }
+        .health-fill { height: 100%; background: #00ff88; width: 100%; transition: width 0.3s; }
+
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 15px; }
+        .admin-grid button { font-size: 0.6rem; padding: 8px; margin: 0; }
+
+        #controls {
+            position: absolute; bottom: 20px; right: 20px;
+            text-align: right; font-size: 0.75rem; color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div id="main-menu">
+    <div class="glass-card">
+        <h1>WAR WITH CUBES</h1>
+        <p style="color: #666;">Battle Simulation & Sandbox</p>
+        <input type="number" id="player-count" value="100" min="3" max="500">
+        <button onclick="startGame(false)">Spectate War</button>
+        <button onclick="startGame(true)" style="border-color: var(--secondary); color: var(--secondary);">Play as Player</button>
+    </div>
+</div>
+
+<div id="ui-layer">
+    <div id="leaderboard">
+        <div style="color: var(--primary); font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid;">TOP WARRIORS</div>
+        <div id="lb-list"></div>
+    </div>
+
+    <div id="stats-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <b id="stat-name">Name</b>
+            <span id="stat-emotion" style="font-size: 0.7rem; opacity: 0.7;">Emotion</span>
+        </div>
+        <div class="health-bar"><div id="stat-health-fill" class="health-fill"></div></div>
+        <div style="font-size: 0.8rem; display: flex; justify-content: space-between;">
+            <span>Kills: <span id="stat-kills">0</span></span>
+            <span>Status: <span id="stat-status">Active</span></span>
+        </div>
+        <div class="admin-grid">
+            <button onclick="adminAction('kill')" style="border-color: #ff4444; color: #ff4444;">KILL</button>
+            <button onclick="adminAction('heal')">HEAL</button>
+            <button onclick="adminAction('god')" id="god-btn">GOD</button>
+        </div>
+        <button onclick="closeStats()" style="margin-top: 10px; padding: 5px; font-size: 0.7rem;">Close</button>
+    </div>
+
+    <div id="controls">
+        WASD to Move | SHIFT to Sprint<br>
+        SCROLL to Zoom | RIGHT-CLICK DRAG to Pan<br>
+        LEFT-CLICK Cube to Inspect
+    </div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let entities = [];
+let obstacles = [];
+let mapSize = 2500;
+let camera = { x: 0, y: 0, zoom: 0.4, target: null };
+let gameRunning = false;
+let circleRadius = 0;
+let isShrinking = false;
+let startTime = 0;
+let userPlayer = null;
+let selectedEntity = null;
+
+// Input
+const keys = {};
+let isDragging = false;
+let lastMouse = { x: 0, y: 0 };
+
+/**
+ * INITIALIZATION
+ */
+function startGame(asPlayer) {
+    const count = Math.min(500, Math.max(3, parseInt(document.getElementById('player-count').value)));
+    entities = [];
+    obstacles = [];
+    
+    // Dynamic map size based on count
+    mapSize = Math.sqrt(count) * 200;
+    circleRadius = mapSize * 0.7;
+
+    // Generate Clean Obstacles
+    const obstacleCount = Math.floor(count / 3);
+    for (let i = 0; i < obstacleCount; i++) {
+        const w = 40 + Math.random() * 150;
+        const h = 40 + Math.random() * 150;
+        obstacles.push({
+            x: (Math.random() - 0.5) * (mapSize * 0.8),
+            y: (Math.random() - 0.5) * (mapSize * 0.8),
+            w: w,
+            h: h
+        });
+    }
+
+    // Spawn Entities
+    for (let i = 0; i < count; i++) {
+        const isUser = (asPlayer && i === 0);
+        let rx, ry, safe = false;
+        
+        // Ensure spawn is not inside an obstacle
+        while(!safe) {
+            rx = (Math.random() - 0.5) * (mapSize * 0.8);
+            ry = (Math.random() - 0.5) * (mapSize * 0.8);
+            safe = !checkObstacleCollision(rx, ry, 20);
+        }
+
+        const e = new Entity(i, rx, ry, isUser);
+        entities.push(e);
+        if (isUser) userPlayer = e;
+    }
+
+    document.getElementById('main-menu').style.display = 'none';
+    gameRunning = true;
+    startTime = Date.now();
+    requestAnimationFrame(loop);
+}
+
+/**
+ * ENTITY LOGIC
+ */
+class Entity {
+    constructor(id, x, y, isPlayer) {
+        this.id = id;
+        this.baseX = x; // "Home Base" memory
+        this.baseY = y;
+        this.x = x;
+        this.y = y;
+        this.isPlayer = isPlayer;
+        this.name = isPlayer ? "YOU" : "Cube_" + id;
+        this.color = isPlayer ? "#fff" : `hsl(${Math.random() * 360}, 70%, 60%)`;
+        this.health = 100;
+        this.kills = 0;
+        this.stamina = 100;
+        this.emotion = "Neutral";
+        this.vx = 0; this.vy = 0;
+        this.speed = 3;
+        this.size = 18;
+        this.target = null;
+        this.isGod = false;
+        this.thinkTimer = Math.random() * 30;
+    }
+
+    update() {
+        if (this.health <= 0) return;
+
+        // Stamina recovery
+        if (this.stamina < 100) this.stamina += 0.2;
+
+        if (this.isPlayer) {
+            this.handlePlayerInput();
+        } else {
+            this.handleAI();
+        }
+
+        // Apply movement with obstacle avoidance
+        const nextX = this.x + this.vx;
+        const nextY = this.y + this.vy;
+
+        if (!checkObstacleCollision(nextX, this.y, this.size)) this.x = nextX;
+        if (!checkObstacleCollision(this.x, nextY, this.size)) this.y = nextY;
+
+        // Red Zone Logic (Touch/See)
+        const distFromCenter = Math.sqrt(this.x*this.x + this.y*this.y);
+        
+        // If they "see" the zone (approaching edge) or touch it
+        if (isShrinking && distFromCenter > circleRadius * 0.85) {
+            this.emotion = "Retreating";
+            const angleToBase = Math.atan2(this.baseY - this.y, this.baseX - this.x);
+            this.vx += Math.cos(angleToBase) * 0.8;
+            this.vy += Math.sin(angleToBase) * 0.8;
+            
+            if (distFromCenter > circleRadius) {
+                this.takeDamage(0.25); // Take damage in the red
+            }
+        }
+
+        // Friction
+        this.vx *= 0.85;
+        this.vy *= 0.85;
+    }
+
+    handlePlayerInput() {
+        let mSpeed = this.speed;
+        if (keys['ShiftLeft'] && this.stamina > 1) {
+            const lowHealthBoost = 1 + (1 - this.health/100);
+            mSpeed *= (1.6 * lowHealthBoost);
+            this.stamina -= 0.6;
+            this.emotion = "Sprinting";
+        } else {
+            this.emotion = "Focused";
+        }
+
+        if (keys['KeyW']) this.vy -= mSpeed;
+        if (keys['KeyS']) this.vy += mSpeed;
+        if (keys['KeyA']) this.vx -= mSpeed;
+        if (keys['KeyD']) this.vx += mSpeed;
+    }
+
+    handleAI() {
+        this.thinkTimer--;
+        
+        if (this.health < 30) {
+            this.emotion = "Panicked";
+            const angleToBase = Math.atan2(this.baseY - this.y, this.baseX - this.x);
+            this.vx += Math.cos(angleToBase) * 0.6;
+            this.vy += Math.sin(angleToBase) * 0.6;
+            return;
+        }
+
+        if (this.thinkTimer <= 0) {
+            this.thinkTimer = 30 + Math.random() * 30;
+            this.findTarget();
+        }
+
+        if (this.target && this.target.health > 0) {
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist < 400) {
+                this.vx += (dx / dist) * 0.5;
+                this.vy += (dy / dist) * 0.5;
+                this.emotion = "Hunting";
+                
+                if (dist < this.size * 1.5) {
+                    this.target.takeDamage(0.8, this);
+                }
+            }
+        } else {
+            this.emotion = "Wandering";
+        }
+    }
+
+    findTarget() {
+        let closest = null;
+        let minDist = 500;
+        // Optimization: only check a few random entities for performance with 500 agents
+        for (let i = 0; i < 20; i++) {
+            const other = entities[Math.floor(Math.random() * entities.length)];
+            if (other === this || other.health <= 0) continue;
+            const d = Math.sqrt((other.x - this.x)**2 + (other.y - this.y)**2);
+            if (d < minDist) {
+                minDist = d;
+                closest = other;
+            }
+        }
+        this.target = closest;
+    }
+
+    takeDamage(amt, attacker) {
+        if (this.isGod) return;
+        this.health -= amt;
+        if (this.health <= 0) {
+            this.health = 0;
+            if (attacker) attacker.kills++;
+        }
+    }
+
+    draw() {
+        if (this.health <= 0) return;
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+        ctx.shadowBlur = 0;
+
+        // Health line
+        ctx.fillStyle = "#00ff88";
+        ctx.fillRect(this.x - this.size/2, this.y - this.size/2 - 8, this.size * (this.health/100), 3);
+    }
+}
+
+/**
+ * WORLD PHYSICS
+ */
+function checkObstacleCollision(x, y, size) {
+    const r = size / 2;
+    for (let obs of obstacles) {
+        if (x + r > obs.x && x - r < obs.x + obs.w &&
+            y + r > obs.y && y - r < obs.y + obs.h) {
+            return true;
+        }
+    }
+    // Hard map bounds
+    if (Math.abs(x) > mapSize/2 || Math.abs(y) > mapSize/2) return true;
+    return false;
+}
+
+/**
+ * CORE LOOP
+ */
+function loop() {
+    if (!gameRunning) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const elapsed = (Date.now() - startTime) / 1000;
+    if (elapsed > 60) {
+        isShrinking = true;
+        if (circleRadius > 200) circleRadius -= 0.4;
+    }
+
+    // Camera follow logic
+    if (camera.target) {
+        camera.x += (camera.target.x - camera.x) * 0.1;
+        camera.y += (camera.target.y - camera.y) * 0.1;
+    } else if (userPlayer && userPlayer.health > 0) {
+        camera.x += (userPlayer.x - camera.x) * 0.1;
+        camera.y += (userPlayer.y - camera.y) * 0.1;
+    }
+
+    // Update entities
+    entities.forEach(e => e.update());
+
+    draw();
+    updateHUD();
+    requestAnimationFrame(loop);
+}
+
+function draw() {
+    ctx.fillStyle = "#050508";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.scale(camera.zoom, camera.zoom);
+    ctx.translate(-camera.x, -camera.y);
+
+    // Draw Grid
+    ctx.strokeStyle = "rgba(0, 242, 255, 0.05)";
+    ctx.lineWidth = 2;
+    for(let i = -mapSize/2; i <= mapSize/2; i += 200) {
+        ctx.beginPath(); ctx.moveTo(i, -mapSize/2); ctx.lineTo(i, mapSize/2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-mapSize/2, i); ctx.lineTo(mapSize/2, i); ctx.stroke();
+    }
+
+    // Draw Red Zone
+    ctx.strokeStyle = isShrinking ? "#ff0055" : "#00f2ff";
+    ctx.lineWidth = 15 / camera.zoom;
+    ctx.beginPath();
+    ctx.arc(0, 0, circleRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Draw Obstacles
+    ctx.fillStyle = "#151520";
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.lineWidth = 2;
+    obstacles.forEach(obs => {
+        ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+    });
+
+    // Draw Entities
+    entities.forEach(e => e.draw());
+
+    ctx.restore();
+}
+
+function updateHUD() {
+    // Leaderboard (Top 15)
+    const alive = entities.filter(e => e.health > 0);
+    const sorted = alive.sort((a,b) => b.kills - a.kills).slice(0, 15);
+    
+    document.getElementById('lb-list').innerHTML = sorted.map(e => `
+        <div class="lb-entry" onclick="selectEnt(${e.id})">
+            <span>${e.name}</span>
+            <b style="color:var(--primary)">${e.kills}</b>
+        </div>
+    `).join('');
+
+    if (selectedEntity) {
+        document.getElementById('stat-name').innerText = selectedEntity.name;
+        document.getElementById('stat-name').style.color = selectedEntity.color;
+        document.getElementById('stat-emotion').innerText = selectedEntity.emotion;
+        document.getElementById('stat-kills').innerText = selectedEntity.kills;
+        document.getElementById('stat-health-fill').style.width = selectedEntity.health + "%";
+        document.getElementById('stat-status').innerText = selectedEntity.health > 0 ? "ALIVE" : "ELIMINATED";
+        document.getElementById('god-btn').style.background = selectedEntity.isGod ? "var(--primary)" : "transparent";
+    }
+
+    // Check for Winner
+    if (alive.length === 1 && gameRunning && entities.length > 1) {
+        const winner = alive[0];
+        winner.emotion = "VICTORIOUS";
+        winner.vx = 0; winner.vy = 0;
+    }
+}
+
+/**
+ * INTERACTION
+ */
+canvas.addEventListener('mousedown', e => { if(e.button === 2) isDragging = true; lastMouse = {x: e.clientX, y: e.clientY}; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+    if(isDragging) {
+        camera.x -= (e.clientX - lastMouse.x) / camera.zoom;
+        camera.y -= (e.clientY - lastMouse.y) / camera.zoom;
+        camera.target = null;
+    }
+    lastMouse = {x: e.clientX, y: e.clientY};
+});
+
+window.addEventListener('wheel', e => {
+    camera.zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+    camera.zoom = Math.max(0.05, Math.min(4, camera.zoom));
+});
+
+canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left - canvas.width/2) / camera.zoom + camera.x;
+    const my = (e.clientY - rect.top - canvas.height/2) / camera.zoom + camera.y;
+    
+    let found = entities.find(ent => ent.health > 0 && Math.abs(ent.x - mx) < 20 && Math.abs(ent.y - my) < 20);
+    if (found) selectEnt(found.id);
+});
+
+function selectEnt(id) {
+    selectedEntity = entities.find(e => e.id === id);
+    camera.target = selectedEntity;
+    document.getElementById('stats-panel').style.display = 'block';
+}
+
+function closeStats() {
+    selectedEntity = null;
+    camera.target = null;
+    document.getElementById('stats-panel').style.display = 'none';
+}
+
+function adminAction(type) {
+    if (!selectedEntity) return;
+    if (type === 'kill') selectedEntity.health = 0;
+    if (type === 'heal') selectedEntity.health = 100;
+    if (type === 'god') selectedEntity.isGod = !selectedEntity.isGod;
+}
+
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+</script>
+</body>
+</html>
